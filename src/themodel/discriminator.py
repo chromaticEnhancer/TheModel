@@ -93,11 +93,11 @@ class Discriminator(nn.Module):
 
 
 def test():
-    x = torch.randn(1, 3, 512, 512).to('cuda')
-    y = torch.randn(1, 3, 512, 512).to('cuda')
+    x = torch.randn(1, 3, 512, 512).to("cuda")
+    y = torch.randn(1, 3, 512, 512).to("cuda")
 
     model = Discriminator(input_channels=6, output_channels=1)
-    model = model.to('cuda')
+    model = model.to("cuda")
     preds = model(x, y)
 
     assert preds.shape == (1, 1, 62, 62), "Output shape is incorrect"

@@ -3,9 +3,10 @@ from typing import Any
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
-class SELayer(nn.Module):
+class SEskipConnection(nn.Module):
     def __init__(self, in_channels) -> None:
         super().__init__()
 
@@ -21,7 +22,7 @@ class SELayer(nn.Module):
         return image * self.layer(image)
 
 
-class SEBlock(nn.Module):
+class SEBlockEncoderSide(nn.Module):
     expansion = 4
 
     def __init__(
@@ -36,7 +37,7 @@ class SEBlock(nn.Module):
 
         self.downsample = downsample
         self.stride = stride
-        self.selayer = SELayer(out_channels * 4)
+        self.selayer = SEskipConnection(out_channels * 4)
 
         self.layer_first_half = nn.Sequential(
             nn.Conv2d(in_channels, out_channels * 2, kernel_size=1, bias=False),
@@ -55,7 +56,7 @@ class SEBlock(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels * 2, out_channels * 4, kernel_size=1, bias=False),
             nn.BatchNorm2d(out_channels * 4),
-            SELayer(out_channels * 4),
+            SEskipConnection(out_channels * 4),
         )
 
         self.layer_sec_half = nn.ReLU(inplace=True)
@@ -69,6 +70,36 @@ class SEBlock(nn.Module):
 
         out += res
         return self.layer_sec_half(out)
+
+
+class SEBlockDecoderSide(nn.Module):
+    def __init__(self, input_channels: int, out_channels: int, stride: int = 1, cardinality: int=32, dilate:int = 1 ) -> None:
+        """
+        input_channels and output_channels must be divisible by cardinality
+        """
+        super().__init__()
+        
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(in_channels=input_channels, out_channels=out_channels // 2, kernel_size=1, stride=1, padding=0, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(in_channels=out_channels // 2, out_channels=out_channels // 2, kernel_size= 2 + stride, stride=stride, padding=dilate, dilation=dilate, groups=cardinality, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(in_channels=out_channels // 2, out_channels=out_channels, kernel_size=1, stride=1, padding=0, bias=False),
+            SEskipConnection(in_channels=out_channels)
+        )
+
+        self.conditional_layer = None
+        if stride != 1:
+            self.conditional_layer = nn.AvgPool2d(kernel_size=2, stride=2)
+        
+    def forward(self, image):
+        out = self.layer1(image)
+
+        if self.conditional_layer:
+            out = self.conditional_layer(out)
+
+        
+        return image + out
 
 
 class UNetEncoder(nn.Module):
@@ -130,7 +161,7 @@ class UNetEncoder(nn.Module):
         layers = []
 
         layers.append(
-            SEBlock(
+            SEBlockEncoderSide(
                 in_channels=self.inplanes,
                 out_channels=out_channels,
                 cardinality=self.cardinality,
@@ -143,7 +174,7 @@ class UNetEncoder(nn.Module):
 
         for _ in range(1, no_of_bottlenecks):
             layers.append(
-                SEBlock(
+                SEBlockEncoderSide(
                     in_channels=self.inplanes,
                     out_channels=out_channels,
                     cardinality=self.cardinality,
@@ -159,6 +190,76 @@ class UNetEncoder(nn.Module):
         x4 = self.layer4(x3)
 
         return x1, x2, x3, x4
+
+
+class UNetDecoder(nn.Module):
+    """
+    We don't have forward method here 
+    because output from decoder is also required.
+    """
+    def __init__(self) -> None:
+        super().__init__()
+
+
+        self.layer4 = nn.Sequential(
+            nn.Conv2d(in_channels=1152, out_channels=512, kernel_size=3, stride=1, padding=1),
+            nn.LeakyReLU(0.2, inplace=True),
+            *[SEBlockDecoderSide(512, 512, cardinality=32, dilate=1) for _ in range(20)],
+            nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=3, stride=1, padding=1),
+            nn.PixelShuffle(2),
+            nn.LeakyReLU(0.2, inplace=True)
+        )
+
+        self.layer3 = nn.Sequential(
+            nn.Conv2d(in_channels=512 + 256, out_channels=256, kernel_size=3, stride=1, padding=1),
+            nn.LeakyReLU(0.2, inplace=True),
+            *[SEBlockDecoderSide(input_channels=256, out_channels=256, cardinality=32, dilate=1) for _ in range(2)],
+            *[SEBlockDecoderSide(input_channels=256, out_channels=256, cardinality=32, dilate=2) for _ in range(2)],
+            *[SEBlockDecoderSide(input_channels=256, out_channels=256, cardinality=32, dilate=4) for _ in range(2)],
+            SEBlockDecoderSide(input_channels=256, out_channels=256, cardinality=32, dilate=2),
+            SEBlockDecoderSide(input_channels=256, out_channels=256, cardinality=32, dilate=1),
+            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),
+            nn.PixelShuffle(2),
+            nn.LeakyReLU(0.2, True)
+        )
+
+        self.layer2 = nn.Sequential(
+            nn.Conv2d(in_channels=128 + 256 + 64, out_channels=128, kernel_size=3, stride=1, padding=1),
+            nn.LeakyReLU(0.2, inplace=True),
+            *[SEBlockDecoderSide(input_channels=128, out_channels=128, cardinality=32, dilate=1) for _ in range(2)],
+            *[SEBlockDecoderSide(input_channels=128, out_channels=128, cardinality=32, dilate=2) for _ in range(2)],
+            *[SEBlockDecoderSide(input_channels=128, out_channels=128, cardinality=32, dilate=4) for _ in range(2)],
+            SEBlockDecoderSide(input_channels=128, out_channels=128, cardinality=32, dilate=2),
+            SEBlockDecoderSide(input_channels=128, out_channels=128, cardinality=32, dilate=1),
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1),
+            nn.PixelShuffle(2),
+            nn.LeakyReLU(0.2, inplace=True)
+        )
+
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(in_channels=64 + 32, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.LeakyReLU(0.2, True),
+            SEBlockDecoderSide(input_channels=64, out_channels=64, cardinality=16, dilate=1),
+            SEBlockDecoderSide(input_channels=64, out_channels=64, cardinality=16, dilate=2),
+            SEBlockDecoderSide(input_channels=64, out_channels=64, cardinality=16, dilate=4),
+            SEBlockDecoderSide(input_channels=64, out_channels=64, cardinality=16, dilate=2),
+            SEBlockDecoderSide(input_channels=64, out_channels=64, cardinality=16, dilate=1),
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1),
+            nn.PixelShuffle(2),
+            nn.LeakyReLU(0.2, inplace=True)
+        )
+
+    def upscale(self, input_channels: int = 256, out_channels: int = 3) -> nn.Sequential:
+        return nn.Sequential(
+            nn.ConvTranspose2d(input_channels, 128, 3, stride=2, padding=1, output_padding=1),
+            nn.LeakyReLU(0.2),
+            nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1),
+            nn.LeakyReLU(0.2),
+            nn.ConvTranspose2d(64, 32, 3, stride=1, padding=1, output_padding=0),
+            nn.LeakyReLU(0.2),
+            nn.ConvTranspose2d(32, out_channels, 3, stride=1, padding=1, output_padding=0),
+            nn.Tanh()
+        )
 
 
 class LocalFeatureExtractor(nn.Module):
@@ -202,7 +303,14 @@ class LocalFeatureExtractor(nn.Module):
 
 def __test():
     image = torch.randn(1, 3, 512, 512).to('cuda')
-   
+    image_s = torch.randn(1, 3, 512, 512).to('cuda')
+
+
+
+    # extractor = SEBlockDecoderSide(input_channels=3, out_channels=5)
+    # model2 = extractor.to('cuda')
+    # out2 = model2(image_s)
+    # print(out2.shape)
     encoder = UNetEncoder()
     feature = LocalFeatureExtractor()
 
@@ -211,14 +319,18 @@ def __test():
 
     out1 = model1(image)
     out2 = model2(image)
-    print("encoder out", end=' ')
-    print(out1[3].shape)
+    # print("encoder out", end=' ')
+    # print(out1[3].shape)
 
     print("feature output", end=' ')
     print(out2[1].shape)
 
-    torch.cat([out1[3], out2[0]], 1)
+    layer3_in=torch.cat([out1[3], out2[0]], 1)
+  
 
+ 
+
+    
 
 if __name__ == "__main__":
     __test()
