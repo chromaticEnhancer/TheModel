@@ -236,18 +236,7 @@ class UNetDecoder(nn.Module):
             nn.LeakyReLU(0.2, inplace=True)
         )
 
-        self.layer1 = nn.Sequential(
-            nn.Conv2d(in_channels=64 + 32, out_channels=64, kernel_size=3, stride=1, padding=1),
-            nn.LeakyReLU(0.2, True),
-            SEBlockDecoderSide(input_channels=64, out_channels=64, cardinality=16, dilate=1),
-            SEBlockDecoderSide(input_channels=64, out_channels=64, cardinality=16, dilate=2),
-            SEBlockDecoderSide(input_channels=64, out_channels=64, cardinality=16, dilate=4),
-            SEBlockDecoderSide(input_channels=64, out_channels=64, cardinality=16, dilate=2),
-            SEBlockDecoderSide(input_channels=64, out_channels=64, cardinality=16, dilate=1),
-            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1),
-            nn.PixelShuffle(2),
-            nn.LeakyReLU(0.2, inplace=True)
-        )
+        
 
     def upscale(self, input_channels: int = 256, out_channels: int = 3) -> nn.Sequential:
         return nn.Sequential(

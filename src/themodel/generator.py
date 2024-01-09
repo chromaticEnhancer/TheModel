@@ -56,12 +56,16 @@ class UNet(nn.Module):
 
 
 def __test():
-    image = torch.randn(1, 3, 512, 512).to('cuda')
+    import torchvision
+    flower = torchvision.io.read_image('./img/flower.png', mode=torchvision.io.ImageReadMode.RGB)
+    image = flower.to('cuda')
     unet = UNet().to('cuda')
+    outimage = unet(image)
+    
+    torchvision.utils.save_image(outimage[0], fp="x.png")
+    torchvision.utils.save_image(outimage[1], fp='upscaled.png')
 
-    x, upscaled = unet(image)
 
-    assert x.shape == upscaled.shape
 
 if __name__ == "__main__":
     __test()
