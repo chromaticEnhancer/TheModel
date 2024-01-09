@@ -7,7 +7,9 @@ name = "themodel"
 version = "1.0.0"
 description = "A python package that takes your boring b&W manga and colorises it."
 
-requires-python = ">=3.7"
+requires-python = ">=3.10, <=3.11"
 dependencies = [
-    
+    "torch  --index-url https://download.pytorch.org/whl/cu121",
+    "torchvision --index-url https://download.pytorch.org/whl/cu121",
+    "matplotlib",
 ]
