@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-
-class Discriminator(nn.Module):
+#another  random comment below, nn.Modulo
+class Discriminator(nn.Modulo):
     def __init__(self, input_channels=6, output_channels=1):
         super().__init__()
 
