@@ -237,19 +237,6 @@ class UNetDecoder(nn.Module):
             nn.LeakyReLU(0.2, inplace=True)
         )
 
-        
-
-    def upscale(self, input_channels: int = 256, out_channels: int = 3) -> nn.Sequential:
-        return nn.Sequential(
-            nn.ConvTranspose2d(input_channels, 128, 3, stride=2, padding=1, output_padding=1),
-            nn.LeakyReLU(0.2),
-            nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1),
-            nn.LeakyReLU(0.2),
-            nn.ConvTranspose2d(64, 32, 3, stride=1, padding=1, output_padding=0),
-            nn.LeakyReLU(0.2),
-            nn.ConvTranspose2d(32, out_channels, 3, stride=1, padding=1, output_padding=0),
-            nn.Tanh()
-        )
 
 
 class LocalFeatureExtractor(nn.Module):
@@ -289,38 +276,3 @@ class LocalFeatureExtractor(nn.Module):
         aux_out = self.layer4(aux_out)
 
         return aux_out, x0
-
-
-def __test():
-    image = torch.randn(1, 3, 512, 512).to('cuda')
-    image_s = torch.randn(1, 3, 512, 512).to('cuda')
-
-
-
-    # extractor = SEBlockDecoderSide(input_channels=3, out_channels=5)
-    # model2 = extractor.to('cuda')
-    # out2 = model2(image_s)
-    # print(out2.shape)
-    encoder = UNetEncoder()
-    feature = LocalFeatureExtractor()
-
-    model1 = encoder.to('cuda')
-    model2 = feature.to('cuda')
-
-    out1 = model1(image)
-    out2 = model2(image)
-    # print("encoder out", end=' ')
-    # print(out1[3].shape)
-
-    print("feature output", end=' ')
-    print(out2[1].shape)
-
-    layer3_in=torch.cat([out1[3], out2[0]], 1)
-  
-
- 
-
-    
-
-if __name__ == "__main__":
-    __test()
