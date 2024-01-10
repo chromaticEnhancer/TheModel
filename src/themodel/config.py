@@ -14,21 +14,21 @@ class Settings(BaseSettings):
     NUM_WORKERS: int = 4
     NUM_EPOCHS: int = 10
 
-    TRAIN_BW_MANGA_PATH: str = './data/train/bw'
-    TRAIN_COLOR_MANGA_PATH: str = './data/train/color'
+    TRAIN_BW_MANGA_PATH: str = "./data/train/bw"
+    TRAIN_COLOR_MANGA_PATH: str = "./data/train/color"
 
-    DEVICE: str = 'cuda' if torch.cuda.is_available() else 'cpu'
-    
+    DEVICE: str = "cuda" if torch.cuda.is_available() else "cpu"
+
     LOAD_CHECKPOINTS: bool = False
     SAVE_CHECKPOINTS: bool = True
     CHECKPOINTS_FOLDER: str = "./checkpoints"
 
     OUTPUT_FOLDER: str = "./output"
-    
 
 
 @lru_cache(maxsize=1)
 def setting_func() -> Settings:
-    return Settings() #type:ignore
+    return Settings()  # type:ignore
+
 
 settings = setting_func()
