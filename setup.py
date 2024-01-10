@@ -11,5 +11,6 @@ setup(
         'matplotlib',
         'pydantic',
         'pydantic_settings',
+        'tqdm'
     ]
 )

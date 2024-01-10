@@ -20,10 +20,11 @@ class Settings(BaseSettings):
     DEVICE: str = 'cuda' if torch.cuda.is_available() else 'cpu'
     
     LOAD_CHECKPOINTS: bool = False
-    SAVE_CHECKPOINTS: bool = True
+    SAVE_CHECKPOINTS: bool = False
     CHECKPOINTS_FOLDER: str = "./checkpoints"
 
     OUTPUT_FOLDER: str = "./output"
+    OUTPUT_LOSS: str = OUTPUT_FOLDER + "/losses"
     
 
 

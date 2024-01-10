@@ -4,6 +4,7 @@ from typing import Literal
 import torch
 
 from themodel.config import settings
+import matplotlib.pyplot as plt
 
 
 class CheckpointTypes(str, Enum):
@@ -33,3 +34,20 @@ def load_model(checkpoint_type: Literal[CheckpointTypes.BW_GENERATOR, Checkpoint
     if lr is not None:
         for param_group in optimizer.param_groups:
             param_group["lr"] = lr
+
+
+def plot_loss(l1: list, l2:list, x: int, label1: str, label2: str, title: str) -> None:
+    
+    plt.figure(figsize=(10,5))
+
+    plt.plot(l1, label=label1)
+    plt.plot(l2, label=label2)
+
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.title(title)
+
+    plt.legend()
+    
+    plt.savefig(settings.OUTPUT_LOSS + "/" + title + ".png")
+    plt.close()
