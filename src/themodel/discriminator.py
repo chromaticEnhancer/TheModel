@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-#another  random comment below, nn.Modulo
-class Discriminator(nn.Module):
+
+class PatchGAN(nn.Module):
     def __init__(self, input_channels=6, output_channels=1):
         super().__init__()
 
@@ -92,17 +92,36 @@ class Discriminator(nn.Module):
         return self.model(x)
 
 
-def test():
-    x = torch.randn(1, 3, 512, 512).to("cuda")
-    y = torch.randn(1, 3, 512, 512).to("cuda")
 
-    model = Discriminator(input_channels=6, output_channels=1)
-    model = model.to("cuda")
-    preds = model(x, y)
+class OriginalPatchGAN(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
 
-    assert preds.shape == (1, 1, 62, 62), "Output shape is incorrect"
-    print(preds.shape)
+        self.layers = nn.Sequential(
+            nn.Conv2d(in_channels=3, out_channels=64, kernel_size=4, stride=2, padding=1, padding_mode="reflect"),
+            nn.LeakyReLU(0.2, inplace=True),
+            
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=4, stride=1, padding=1, bias=True, padding_mode='reflect'),
+            nn.InstanceNorm2d(128),
+            nn.LeakyReLU(0.2, inplace=True),
 
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=4, stride=1, padding=1, bias=True, padding_mode='reflect'),
+            nn.InstanceNorm2d(256),
+            nn.LeakyReLU(0.2, inplace=True),
 
-if __name__ == "__main__":
-    test()
+            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=4, stride=2, padding=1, bias=True, padding_mode='reflect'),
+            nn.InstanceNorm2d(512),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(in_channels=512, out_channels=512, kernel_size=4, stride=2, padding=1, bias=True, padding_mode='reflect'),
+            nn.InstanceNorm2d(512),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(in_channels=512, out_channels=1, kernel_size=4, stride=1, padding=1, padding_mode='reflect'),
+            nn.Sigmoid()
+
+        )
+
+    def forward(self, image) -> torch.TensorType:
+        return self.layers(image)
+

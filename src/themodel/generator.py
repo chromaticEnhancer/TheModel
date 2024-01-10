@@ -1,7 +1,5 @@
 import torch
 import torch.nn as nn
-import torchvision
-
 
 from themodel.components import UNetEncoder
 from themodel.components import UNetDecoder
