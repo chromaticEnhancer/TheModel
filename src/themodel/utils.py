@@ -13,19 +13,39 @@ class CheckpointTypes(str, Enum):
     COLOR_DISC = "color_discriminator"
     BW_DISC = "bw_discriminator"
 
-def save_model(model, optimizer, checkpoint_type: Literal[CheckpointTypes.BW_GENERATOR, CheckpointTypes.COLOR_GENERATOR, CheckpointTypes.COLOR_DISC, CheckpointTypes.BW_DISC]) -> None:
-    
-    checkpoint = {
-        "model": model.state_dict(),
-        "optimizer": optimizer.state_dict()
-    }
 
-    torch.save(checkpoint, f=os.path.join(settings.CHECKPOINTS_FOLDER, checkpoint_type.value, ".pth.tar"))
+def save_model(
+    model,
+    optimizer,
+    checkpoint_type: Literal[
+        CheckpointTypes.BW_GENERATOR,
+        CheckpointTypes.COLOR_GENERATOR,
+        CheckpointTypes.COLOR_DISC,
+        CheckpointTypes.BW_DISC,
+    ],
+) -> None:
+    checkpoint = {"model": model.state_dict(), "optimizer": optimizer.state_dict()}
+
+    torch.save(
+        checkpoint,
+        f=os.path.join(settings.CHECKPOINTS_FOLDER, checkpoint_type.value, ".pth.tar"),
+    )
 
 
-def load_model(checkpoint_type: Literal[CheckpointTypes.BW_GENERATOR, CheckpointTypes.COLOR_GENERATOR, CheckpointTypes.COLOR_DISC, CheckpointTypes.BW_DISC], model, optimizer, lr = None):
+def load_model(
+    checkpoint_type: Literal[
+        CheckpointTypes.BW_GENERATOR,
+        CheckpointTypes.COLOR_GENERATOR,
+        CheckpointTypes.COLOR_DISC,
+        CheckpointTypes.BW_DISC,
+    ],
+    model,
+    optimizer,
+    lr=None,
+):
     checkpoint = torch.load(
-        f=os.path.join(settings.CHECKPOINTS_FOLDER, checkpoint_type.value, ".pth.tar"), map_location=settings.DEVICE
+        f=os.path.join(settings.CHECKPOINTS_FOLDER, checkpoint_type.value, ".pth.tar"),
+        map_location=settings.DEVICE,
     )
 
     model.load_state_dict(checkpoint["model"])
