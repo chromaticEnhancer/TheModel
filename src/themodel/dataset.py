@@ -3,7 +3,6 @@ import os
 import numpy
 import torch
 import torchvision
-from PIL import Image
 from torch.utils.data import Dataset
 
 from themodel import settings
@@ -25,11 +24,27 @@ class BWColorMangaDataset(Dataset):
     def __getitem__(self, index) -> tuple[torch.Tensor, torch.Tensor]:
         "bw_image, color_image"
         
-        bw_image = numpy.array(Image.open(fp=os.path.join(self.bw_root, self.bw_images[index])).convert("RGB"))
-        color_image = numpy.array(Image.open(fp=os.path.join(self.color_root, self.color_images[index])).convert("RGB"))
+        bw_image = torchvision.io.read_image(
+            path=os.path.join(self.bw_root, self.bw_images[index]),
+            mode=torchvision.io.ImageReadMode.RGB,
+        )
+        color_image = torchvision.io.read_image(
+            path=os.path.join(self.color_root, self.color_images[index]),
+            mode=torchvision.io.ImageReadMode.RGB,
+        )
+
+        # return bw_image, color_image
 
         normalise_color = normalize_image(is_color=True)
         normalise_bw = normalize_image(is_color=False)
-        
-        return normalise_bw(bw_image), normalise_color(color_image)
 
+    
+        
+        return normalise_bw(bw_image / 1.0), normalise_color(color_image / 1.0)
+    
+
+
+if __name__ == "__main__":
+    dataset = BWColorMangaDataset(bw_manga_path=settings.TRAIN_BW_MANGA_PATH, color_manga_path=settings.TRAIN_COLOR_MANGA_PATH)
+    bw, color = dataset[0]
+    print(bw.shape, color.shape)

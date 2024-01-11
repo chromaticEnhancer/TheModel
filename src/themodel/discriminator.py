@@ -73,3 +73,12 @@ class PatchGAN(nn.Module):
 
     def forward(self, image) -> torch.TensorType:
         return self.layers(image)
+
+
+
+
+if __name__ == "__main__":
+    image = torch.randn(1, 3, 64, 64)
+    model = PatchGAN()
+    out = model(image)
+    print(out.shape)

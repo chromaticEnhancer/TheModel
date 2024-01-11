@@ -4,12 +4,18 @@ from themodel.discriminator import PatchGAN
 from themodel.config import settings
 from themodel.dataset import BWColorMangaDataset
 from themodel.losses import VGGPerceptualLoss, white_color_penalty
-from themodel.utils import save_model, load_model, CheckpointTypes, make_deterministic, manage_loss
+from themodel.utils import (
+    save_model,
+    load_model,
+    CheckpointTypes,
+    make_deterministic,
+    manage_loss,
+    save_plots,
+)
 
 import torch
 import torch.nn as nn
 import torch.optim as optimizer
-import matplotlib.pyplot as plt 
 
 from tqdm import tqdm
 from torch.utils.data import DataLoader
@@ -41,14 +47,10 @@ def train_model(
     ):
     #fmt: on
     
-    loop = tqdm(train_loader, leave=True)
 
-
-    for _, (bw, color) in enumerate(loop):
+    for bw, color in tqdm(train_loader, leave=True, desc=f'Epoch_no: {epoch_no}'):
         bw = bw.to(settings.DEVICE)
         color = color.to(settings.DEVICE)
-
-
 
         #for discriminator we only we adverserial_loss
         with torch.cuda.amp.autocast(): #type:ignore
@@ -136,6 +138,7 @@ def train_model(
         gen_scaler.step(optimizer_gen)
         gen_scaler.update()
 
+
     # manage the losses
     manage_loss(plot_ad_bw_disc, epoch_no=epoch_no)
     manage_loss(plot_ad_co_disc, epoch_no=epoch_no)
@@ -148,15 +151,15 @@ def train_model(
     manage_loss(plot_cycle_co_gen, epoch_no=epoch_no)
 
 
-    # save_model(model=bw_disc, optimizer=optimizer_disc, checkpoint_type=CheckpointTypes.BW_DISC)
-    # save_model(model=co_disc, optimizer=optimizer_disc, checkpoint_type=CheckpointTypes.COLOR_DISC)
-    # save_model(model=co_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.COLOR_GENERATOR)
-    # save_model(model=bw_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.BW_GENERATOR)
+    save_model(model=bw_disc, optimizer=optimizer_disc, checkpoint_type=CheckpointTypes.BW_DISC)
+    save_model(model=co_disc, optimizer=optimizer_disc, checkpoint_type=CheckpointTypes.COLOR_DISC)
+    save_model(model=co_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.COLOR_GENERATOR)
+    save_model(model=bw_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.BW_GENERATOR)
             
 
 
 def main():
-    # make_deterministic()
+    make_deterministic()
 
     bw_disc = PatchGAN().to(settings.DEVICE)
     co_disc = PatchGAN().to(settings.DEVICE)
@@ -227,7 +230,6 @@ def main():
     disc_scaler = torch.cuda.amp.GradScaler()  # type:ignore
 
 
-    figure, axis = plt.subplots(2, 3)
 
     # fmt: off
     for epoch in range(settings.NUM_EPOCHS):
@@ -239,28 +241,14 @@ def main():
             gen_scaler, disc_scaler,
             epoch
         )
-
-        axis[0, 0].plot(plot_ad_bw_disc, label='BW Discriminator')
-        axis[0, 0].plot(plot_ad_co_disc, label='Color Discriminator')
-        axis[0, 0].set_title('Adverserial Loss')
-
-        axis[0, 1].plot(plot_l1_bw_gen, label="BW Generator")
-        axis[0, 1].plot(plot_l1_co_gen, label="Color Generator")
-        axis[0, 1].set_title('L1 Loss')
-
-        axis[0, 2].plot(plot_per_bw_gen, label="BW Generator")
-        axis[0, 2].plot(plot_per_co_gen, label="Color Generator")
-        axis[0,2].set_title('Perceptual Loss')
-
-        axis[1, 0].plot(plot_wh_co_gen, label="Color Generator")
-        axis[1, 0].set_title("White Color Penalty Loss")
-
-        axis[1, 1].plot(plot_cycle_bw_gen, label="BW Generator")
-        axis[1, 1].plot(plot_cycle_co_gen, label="Color Generator")
-        axis[1, 1].set_title("Cycle Consistency Loss")
-
-        plt.show()
+    
     # fmt:on
+    save_plots(plot_ad_bw_disc, 'BW Discriminator', plot_ad_co_disc, 'Color Discriminator', 'Adverserial Loss')
+    save_plots(plot_l1_bw_gen, 'BW Generator', plot_l1_co_gen, 'Color Generator', 'L1 Loss')
+    save_plots(plot_per_bw_gen, 'BW Generator', plot_per_co_gen, 'Color Generator', 'Perceptual Loss')
+    save_plots(plot_wh_co_gen, 'Color Generator', None, None, 'White Color Penalty Loss')
+    save_plots(plot_cycle_bw_gen, 'BW Generator', plot_cycle_co_gen, 'Color Generator', 'Cycle Consistency Loss')
+
 
 
 if __name__ == "__main__":
