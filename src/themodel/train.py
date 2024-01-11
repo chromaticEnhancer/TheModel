@@ -9,6 +9,7 @@ from themodel.utils import save_model, load_model, CheckpointTypes, make_determi
 import torch
 import torch.nn as nn
 import torch.optim as optimizer
+import matplotlib.pyplot as plt 
 
 from tqdm import tqdm
 from torch.utils.data import DataLoader
@@ -151,10 +152,6 @@ def train_model(
     save_model(model=co_disc, optimizer=optimizer_disc, checkpoint_type=CheckpointTypes.COLOR_DISC)
     save_model(model=co_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.COLOR_GENERATOR)
     save_model(model=bw_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.BW_GENERATOR)
-
-
-        
-
             
 
 
@@ -228,6 +225,9 @@ def main():
     gen_scaler = torch.cuda.amp.GradScaler()  # type:ignore
     disc_scaler = torch.cuda.amp.GradScaler()  # type:ignore
 
+
+    figure, axis = plt.subplots(2, 3)
+
     # fmt: off
     for epoch in range(settings.NUM_EPOCHS):
         train_model(
@@ -238,4 +238,31 @@ def main():
             gen_scaler, disc_scaler,
             epoch
         )
+
+        axis[0, 0].plot(plot_ad_bw_disc, label='BW Discriminator')
+        axis[0, 0].plot(plot_ad_co_disc, label='Color Discriminator')
+        axis[0, 0].set_title('Adverserial Loss')
+
+        axis[0, 1].plot(plot_l1_bw_gen, label="BW Generator")
+        axis[0, 1].plot(plot_l1_co_gen, label="Color Generator")
+        axis[0, 1].set_title('L1 Loss')
+
+        axis[0, 2].plot(plot_per_bw_gen, label="BW Generator")
+        axis[0, 2].plot(plot_per_co_gen, label="Color Generator")
+        axis[0,2].set_title('Perceptual Loss')
+
+        axis[1, 0].plot(plot_wh_co_gen, label="Color Generator")
+        axis[1, 0].set_title("White Color Penalty Loss")
+
+        axis[1, 1].plot(plot_cycle_bw_gen, label="BW Generator")
+        axis[1, 1].plot(plot_cycle_co_gen, label="Color Generator")
+        axis[1, 1].set_title("Cycle Consistency Loss")
+
+        plt.show()
+
+
+
+
+
+
     # fmt:on
