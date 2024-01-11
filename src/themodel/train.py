@@ -259,10 +259,4 @@ def main():
         axis[1, 1].set_title("Cycle Consistency Loss")
 
         plt.show()
-
-
-
-
-
-
     # fmt:on
