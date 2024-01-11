@@ -30,23 +30,23 @@ def save_model(
 
     torch.save(
         checkpoint,
-        f=os.path.join(settings.CHECKPOINTS_FOLDER, checkpoint_type.value, ".pth.tar"),
+        f=os.path.join(settings.CHECKPOINTS_FOLDER, checkpoint_type.value),
     )
 
 
 def load_model(
+    model,
+    optimizer,
     checkpoint_type: Literal[
         CheckpointTypes.BW_GENERATOR,
         CheckpointTypes.COLOR_GENERATOR,
         CheckpointTypes.COLOR_DISC,
         CheckpointTypes.BW_DISC,
     ],
-    model,
-    optimizer,
     lr=None,
 ):
     checkpoint = torch.load(
-        f=os.path.join(settings.CHECKPOINTS_FOLDER, checkpoint_type.value, ".pth.tar"),
+        f=os.path.join(settings.CHECKPOINTS_FOLDER, checkpoint_type.value),
         map_location=settings.DEVICE,
     )
 

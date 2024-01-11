@@ -151,10 +151,11 @@ def train_model(
     manage_loss(plot_cycle_co_gen, epoch_no=epoch_no)
 
 
-    save_model(model=bw_disc, optimizer=optimizer_disc, checkpoint_type=CheckpointTypes.BW_DISC)
-    save_model(model=co_disc, optimizer=optimizer_disc, checkpoint_type=CheckpointTypes.COLOR_DISC)
-    save_model(model=co_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.COLOR_GENERATOR)
-    save_model(model=bw_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.BW_GENERATOR)
+    if settings.SAVE_CHECKPOINTS:
+        save_model(model=bw_disc, optimizer=optimizer_disc, checkpoint_type=CheckpointTypes.BW_DISC)
+        save_model(model=co_disc, optimizer=optimizer_disc, checkpoint_type=CheckpointTypes.COLOR_DISC)
+        save_model(model=co_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.COLOR_GENERATOR)
+        save_model(model=bw_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.BW_GENERATOR)
             
 
 
@@ -167,6 +168,7 @@ def main():
     bw_gen = UNet().to(settings.DEVICE)
     co_gen = UNet().to(settings.DEVICE)
 
+
     optimizer_disc = optimizer.Adam(
         params=list(bw_disc.parameters()) + list(co_disc.parameters()),
         lr=settings.LEARNING_RATE,
@@ -178,6 +180,10 @@ def main():
         lr=settings.LEARNING_RATE,
         betas=(0.5, 0.999),
     )
+
+    save_model(bw_disc, optimizer_disc, CheckpointTypes.BW_DISC)
+    load_model(bw_disc, optimizer_disc, CheckpointTypes.BW_DISC, lr=None)
+    return
 
     l1 = nn.L1Loss()
     perceptual_loss = VGGPerceptualLoss().to(settings.DEVICE)

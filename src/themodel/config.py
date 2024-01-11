@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     DEVICE: str = "cpu"
 
     LOAD_CHECKPOINTS: bool = False
-    SAVE_CHECKPOINTS: bool = False
+    SAVE_CHECKPOINTS: bool = True
     CHECKPOINTS_FOLDER: str = "./checkpoints"
 
     OUTPUT_FOLDER: str = "./output"
