@@ -2,11 +2,10 @@ import os
 
 import torch
 import torchvision
-from torchvision import transforms
 from torch.utils.data import Dataset
 
 from themodel import settings
-
+from themodel.utils import normalize_image, denormalize_image
 
 class BWColorMangaDataset(Dataset):
     def __init__(self, bw_manga_path: str, color_manga_path: str) -> None:
@@ -22,6 +21,7 @@ class BWColorMangaDataset(Dataset):
         return self.dataset_length
 
     def __getitem__(self, index) -> tuple[torch.Tensor, torch.Tensor]:
+        "bw_image, color_image"
         bw_image = torchvision.io.read_image(
             path=os.path.join(self.bw_root, self.bw_images[index]),
             mode=torchvision.io.ImageReadMode.RGB,
@@ -31,34 +31,8 @@ class BWColorMangaDataset(Dataset):
             mode=torchvision.io.ImageReadMode.RGB,
         )
 
-        transform = transforms.Compose(
-            [
-                transforms.Resize(size=(settings.IMAGE_HEIGHT, settings.IMAGE_WIDTH), antialias=True),#type:ignore
-                transforms.ToTensor(),
-                # transforms.Normalize(mean=('we need some values for rgb.'), std=('we need values for rgb.'))
-            ]
-        )
-  
-        return transform(bw_image), transform(color_image)
+        normalise_color = normalize_image(is_color=True)
+        normalise_bw = normalize_image(is_color=False)
+        
+        return normalise_bw(bw_image), normalise_color(color_image)
 
-
-def test():
-    import matplotlib.pyplot as plt
-
-    train_dataset = BWColorMangaDataset(
-        bw_manga_path=settings.TRAIN_BW_MANGA_PATH,
-        color_manga_path=settings.TRAIN_COLOR_MANGA_PATH,
-    )
-    bw_image, color_image = train_dataset[0]
-
-    # Display the black and white image
-    plt.subplot(1, 2, 1)
-    plt.imshow(bw_image.permute(1, 2, 0))
-    plt.title("Black and White Image")
-
-    # Display the color image
-    plt.subplot(1, 2, 2)
-    plt.imshow(color_image.permute(1, 2, 0))
-    plt.title("Color Image")
-
-    plt.show()

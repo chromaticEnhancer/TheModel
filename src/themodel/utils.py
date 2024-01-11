@@ -1,10 +1,12 @@
-from enum import Enum
 import os
+from enum import Enum
 from typing import Literal
+
 import torch
+import matplotlib.pyplot as plt
+from torchvision import transforms
 
 from themodel.config import settings
-import matplotlib.pyplot as plt
 
 
 class CheckpointTypes(str, Enum):
@@ -56,18 +58,17 @@ def load_model(
             param_group["lr"] = lr
 
 
-def plot_loss(l1: list, l2:list, x: int, label1: str, label2: str, title: str) -> None:
+def plot_loss(loss_list: list, loss_name: str, title: str) -> None:
     
     plt.figure(figsize=(10,5))
 
-    plt.plot(l1, label=label1)
-    plt.plot(l2, label=label2)
+    plt.plot(loss_list)
+    
 
     plt.xlabel('Epochs')
-    plt.ylabel('Loss')
+    plt.ylabel(loss_name)
     plt.title(title)
 
-    plt.legend()
     
     plt.savefig(settings.OUTPUT_LOSS + "/" + title + ".png")
     plt.close()
@@ -79,3 +80,62 @@ def make_deterministic():
     torch.backends.cudnn.benchmark = False
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+
+
+def normalize_image(is_color: bool = True):
+    mean = (settings.DATASET_MEAN_R_CO, settings.DATASET_MEAN_G_CO, settings.DATASET_MEAN_B_CO)
+    std = (settings.DATASET_STD_R_CO, settings.DATASET_STD_G_CO, settings.DATASET_STD_B_CO)
+
+    if not is_color:
+        mean = (settings.DATASET_MEAN_R_BW, settings.DATASET_MEAN_G_BW, settings.DATASET_MEAN_B_BW)
+        std = (settings.DATASET_STD_R_BW, settings.DATASET_STD_G_BW, settings.DATASET_STD_B_BW)
+
+    transform = transforms.Compose(
+        [
+            transforms.Resize(size=(settings.IMAGE_HEIGHT, settings.IMAGE_WIDTH), antialias=True),#type:ignore
+            transforms.Normalize(
+                mean=mean,
+                std=std
+            ),
+            transforms.ToTensor()
+        ]
+    )
+
+    return transform
+
+
+def denormalize_image(image: torch.Tensor, is_color: bool = True):
+    mean = (settings.DATASET_MEAN_R_CO, settings.DATASET_MEAN_G_CO, settings.DATASET_MEAN_B_CO)
+    std = (settings.DATASET_STD_R_CO, settings.DATASET_STD_G_CO, settings.DATASET_STD_B_CO)
+
+    if not is_color:
+        mean = (settings.DATASET_MEAN_R_BW, settings.DATASET_MEAN_G_BW, settings.DATASET_MEAN_B_BW)
+        std = (settings.DATASET_STD_R_BW, settings.DATASET_STD_G_BW, settings.DATASET_STD_B_BW)
+
+    for t, m, s in zip(image, mean, std):
+        t.mul_(s).add_(m)
+
+    #rescale the image
+    image = image.clamp(0, 1)
+
+    return image
+
+
+def manage_loss(loss_list: list, epoch_no: int)-> list:
+    sum = 0
+    for i in range(epoch_no, len(loss_list)):
+        sum += loss_list[i]
+    
+    loss_list[epoch_no] = sum / len(loss_list[epoch_no:])
+
+    return loss_list[0:epoch_no + 1]
+
+
+# TODO: 6 FUNCTIONS :
+# TO CALCULATE MEAN, SD ( OF EACH CHANNEL AND OF 2 DATASET (B&W / COLOURED))
+# GENERATING TOTAL OF 6 VALUES
+
+    
+if __name__ == "__main__":
+    loss = [1, 2, 3]
+    print(manage_loss(loss, 1))

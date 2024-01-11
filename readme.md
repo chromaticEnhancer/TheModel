@@ -4,3 +4,9 @@
 ## Non-functinal Requirement
 - Find a way to import unofficial package into our project(API)
 - Baki ta sab model ko kaam ho
+
+## TODO
+- MODEL TRAIN GARAUNA MILNE BANAM
+
+## PROCEDURE
+- Initially overfit the model in single image

@@ -3,8 +3,8 @@ from themodel.discriminator import PatchGAN
 
 from themodel.config import settings
 from themodel.dataset import BWColorMangaDataset
-from themodel.utils import save_model, load_model, CheckpointTypes
 from themodel.losses import VGGPerceptualLoss, white_color_penalty
+from themodel.utils import save_model, load_model, CheckpointTypes, make_deterministic, manage_loss
 
 import torch
 import torch.nn as nn
@@ -14,22 +14,40 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 
 
+plot_ad_bw_disc = []
+plot_ad_co_disc = []
+
+plot_l1_co_gen = []
+plot_l1_bw_gen = []
+
+plot_per_co_gen = []
+plot_per_bw_gen = []
+
+plot_wh_co_gen = []
+
+plot_cycle_co_gen = []
+plot_cycle_bw_gen = []
+
+
 # fmt: off
 def train_model(
         bw_disc, co_disc, bw_gen, co_gen,
         optimizer_disc, optimizer_gen,
-        l1, perceptual_loss, adverserial_loss, white_color_penalty_loss, cycle_consistency_loss,
+        l1, perceptual_loss, adverserial_loss, white_color_penalty_loss,
         train_loader,
-        gen_scaler, disc_scaler
+        gen_scaler, disc_scaler,
+        epoch_no
     ):
     #fmt: on
     
     loop = tqdm(train_loader, leave=True)
 
-   
-    for i, (bw, color) in enumerate(loop):
+
+    for _, (bw, color) in enumerate(loop):
         bw = bw.to(settings.DEVICE)
         color = color.to(settings.DEVICE)
+
+
 
         #for discriminator we only we adverserial_loss
         with torch.cuda.amp.autocast(): #type:ignore
@@ -52,6 +70,9 @@ def train_model(
 
             disc_loss = (color_disc_loss_total + bw_disc_loss_total) / 2
 
+            plot_ad_co_disc.append(color_disc_loss_total)
+            plot_ad_bw_disc.append(bw_disc_loss_total)
+
 
         optimizer_disc.zero_grad()
         disc_scaler.scale(disc_loss).backward()
@@ -72,6 +93,9 @@ def train_model(
             l1_loss_for_bw = l1(l1_bw_out, bw)
             l1_loss_for_color = l1(l1_color_out, color)
 
+            plot_l1_bw_gen.append(l1_loss_for_bw)
+            plot_l1_co_gen.append(l1_loss_for_color)
+
 
             #perceptual loss
             per_bw_out = bw_gen(color)
@@ -79,15 +103,23 @@ def train_model(
             perceptual_loss_for_bw = perceptual_loss(per_bw_out, bw)
             perceptual_loss_for_color = perceptual_loss(per_color_out, color)
 
+            plot_per_bw_gen.append(perceptual_loss_for_bw)
+            plot_per_co_gen.append(perceptual_loss_for_color)
+
             #white color penalty loss
             white_color_out = co_gen(bw)
             white_penalty_loss_for_color = white_color_penalty_loss(color, white_color_out)
+
+            plot_wh_co_gen.append(white_penalty_loss_for_color)
 
             #cycle consistency loss
             cycle_bw = bw_gen(generated_color)
             cycle_color = co_gen(generated_bw)
             cycle_bw_loss = l1(bw, cycle_bw)
             cycle_color_loss = l1(color, cycle_color)
+
+            plot_cycle_bw_gen.append(cycle_bw_loss)
+            plot_cycle_co_gen.append(cycle_color_loss)
 
             generator_loss = (
                 bw_disc_loss_for_generated + color_disc_loss_for_generated
@@ -103,12 +135,22 @@ def train_model(
         gen_scaler.step(optimizer_gen)
         gen_scaler.update()
 
+    # manage the losses
+    manage_loss(plot_ad_bw_disc, epoch_no=epoch_no)
+    manage_loss(plot_ad_co_disc, epoch_no=epoch_no)
+    manage_loss(plot_l1_bw_gen, epoch_no=epoch_no)
+    manage_loss(plot_l1_co_gen, epoch_no=epoch_no)
+    manage_loss(plot_per_bw_gen, epoch_no=epoch_no)
+    manage_loss(plot_per_co_gen, epoch_no=epoch_no)
+    manage_loss(plot_wh_co_gen, epoch_no=epoch_no)
+    manage_loss(plot_cycle_bw_gen, epoch_no=epoch_no)
+    manage_loss(plot_cycle_co_gen, epoch_no=epoch_no)
 
-        if i % 400 == 0:
-            save_model(model=bw_disc, optimizer=optimizer_disc, checkpoint_type=CheckpointTypes.BW_DISC)
-            save_model(model=co_disc, optimizer=optimizer_disc, checkpoint_type=CheckpointTypes.COLOR_DISC)
-            save_model(model=co_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.COLOR_GENERATOR)
-            save_model(model=bw_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.BW_GENERATOR)
+
+    save_model(model=bw_disc, optimizer=optimizer_disc, checkpoint_type=CheckpointTypes.BW_DISC)
+    save_model(model=co_disc, optimizer=optimizer_disc, checkpoint_type=CheckpointTypes.COLOR_DISC)
+    save_model(model=co_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.COLOR_GENERATOR)
+    save_model(model=bw_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.BW_GENERATOR)
 
 
         
@@ -117,6 +159,8 @@ def train_model(
 
 
 def main():
+    # make_deterministic()
+
     bw_disc = PatchGAN().to(settings.DEVICE)
     co_disc = PatchGAN().to(settings.DEVICE)
 
@@ -139,7 +183,6 @@ def main():
     perceptual_loss = VGGPerceptualLoss().to(settings.DEVICE)
     adverserial_loss = nn.BCEWithLogitsLoss()
     white_color_penalty_loss = white_color_penalty
-    cycle_consistency_loss = nn.L1Loss()
 
     if settings.LOAD_CHECKPOINTS:
         load_model(
@@ -190,8 +233,9 @@ def main():
         train_model(
             bw_disc, co_disc, bw_gen, co_gen,
             optimizer_disc, optimizer_gen,
-            l1, perceptual_loss, adverserial_loss, white_color_penalty_loss, cycle_consistency_loss,
+            l1, perceptual_loss, adverserial_loss, white_color_penalty_loss,
             train_loader,
-            gen_scaler, disc_scaler
+            gen_scaler, disc_scaler,
+            epoch
         )
     # fmt:on

@@ -6,6 +6,22 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     BATCH_SIZE: int = 1
 
+    DATASET_MEAN_R_CO: float = 0.1307
+    DATASET_MEAN_G_CO: float = 0.1307
+    DATASET_MEAN_B_CO: float = 0.1307
+
+    DATASET_MEAN_R_BW: float = 0.1307
+    DATASET_MEAN_G_BW: float = 0.1307
+    DATASET_MEAN_B_BW: float = 0.1307
+
+    DATASET_STD_R_CO: float = 0.3081
+    DATASET_STD_G_CO: float = 0.3081
+    DATASET_STD_B_CO: float = 0.3081
+
+    DATASET_STD_R_BW: float = 0.3081
+    DATASET_STD_G_BW: float = 0.3081
+    DATASET_STD_B_BW: float = 0.3081
+
     IMAGE_WIDTH: int = 112
     IMAGE_HEIGHT: int = 112
 
