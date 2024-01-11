@@ -154,7 +154,7 @@ def train_model(
 
 
 def main():
-    make_deterministic()
+    # make_deterministic()
 
     bw_disc = PatchGAN().to(settings.DEVICE)
     co_disc = PatchGAN().to(settings.DEVICE)
