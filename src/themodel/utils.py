@@ -71,3 +71,11 @@ def plot_loss(l1: list, l2:list, x: int, label1: str, label2: str, title: str) -
     
     plt.savefig(settings.OUTPUT_LOSS + "/" + title + ".png")
     plt.close()
+
+
+def make_deterministic():
+    seed=0
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
