@@ -2,6 +2,7 @@ import os
 
 import torch
 import torchvision
+from torchvision import transforms
 from torch.utils.data import Dataset
 
 from themodel import settings
@@ -30,10 +31,14 @@ class BWColorMangaDataset(Dataset):
             mode=torchvision.io.ImageReadMode.RGB,
         )
 
-        transform = torchvision.transforms.Resize(
-            size=(settings.IMAGE_HEIGHT, settings.IMAGE_WIDTH), antialias=True
-        )  # type:ignore
-
+        transform = transforms.Compose(
+            [
+                transforms.Resize(size=(settings.IMAGE_HEIGHT, settings.IMAGE_WIDTH), antialias=True),#type:ignore
+                transforms.ToTensor(),
+                # transforms.Normalize(mean=('we need some values for rgb.'), std=('we need values for rgb.'))
+            ]
+        )
+  
         return transform(bw_image), transform(color_image)
 
 
