@@ -181,10 +181,7 @@ def main():
         betas=(0.5, 0.999),
     )
 
-    save_model(bw_disc, optimizer_disc, CheckpointTypes.BW_DISC)
-    load_model(bw_disc, optimizer_disc, CheckpointTypes.BW_DISC, lr=None)
-    return
-
+    
     l1 = nn.L1Loss()
     perceptual_loss = VGGPerceptualLoss().to(settings.DEVICE)
     adverserial_loss = nn.BCEWithLogitsLoss()
