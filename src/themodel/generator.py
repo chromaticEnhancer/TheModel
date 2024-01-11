@@ -37,3 +37,9 @@ class UNet(nn.Module):
 
 # 512 512
 # 112 112
+
+if __name__ == "__main__":
+    image = torch.randn(1, 3, 64, 64)
+    model = UNet()
+    out = model(image)
+    print(out.shape)

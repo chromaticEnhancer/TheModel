@@ -1,6 +1,6 @@
 import os
 from enum import Enum
-from typing import Literal
+from typing import Literal, Optional
 
 import torch
 import matplotlib.pyplot as plt
@@ -58,21 +58,6 @@ def load_model(
             param_group["lr"] = lr
 
 
-def plot_loss(loss_list: list, loss_name: str, title: str) -> None:
-    
-    plt.figure(figsize=(10,5))
-
-    plt.plot(loss_list)
-    
-
-    plt.xlabel('Epochs')
-    plt.ylabel(loss_name)
-    plt.title(title)
-
-    
-    plt.savefig(settings.OUTPUT_LOSS + "/" + title + ".png")
-    plt.close()
-
 
 def make_deterministic():
     seed=0
@@ -97,7 +82,6 @@ def normalize_image(is_color: bool = True):
                 mean=mean,
                 std=std
             ),
-            transforms.ToTensor()
         ]
     )
 
@@ -129,6 +113,19 @@ def manage_loss(loss_list: list, epoch_no: int)-> list:
     loss_list[epoch_no] = sum / len(loss_list[epoch_no:])
 
     return loss_list[0:epoch_no + 1]
+
+
+def save_plots(loss1: list, l1_label: str, loss2: Optional[list], l2_label: Optional[str], title: str):
+    plt.figure()
+    plt.plot(loss1, label=l1_label)
+    if loss2:
+        plt.plot(loss2, label=l2_label)
+    plt.title(title)
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig(settings.OUTPUT_FOLDER + f'/{title}.jpg')
+    plt.close()
 
 
 # TODO: 6 FUNCTIONS :
