@@ -3,6 +3,5 @@ __pycache__/
 themodel.egg-info/
 dist/
 .vscode/
-data/
 checkpoints/
 output/
