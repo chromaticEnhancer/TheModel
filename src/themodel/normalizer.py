@@ -15,9 +15,7 @@ def BW_img_mean_std(img_path):
     """
     try:
         img = Image.open(img_path)
-        # print(img)
         img_data= np.asarray(img)
-        # print(img_data)
         return img_data.mean(), img_data.std()
     except:
         print(f"Error Opening file: {img_path}")
@@ -32,15 +30,10 @@ def C_image_mean_std(img_path):
     try:
         img=Image.open(img_path)
         stat= ImageStat.Stat(img)
-        # print(stat.mean)
-        # print(type(stat.mean))
-        # print(stat.stddev)
-        # print(type(stat.stddev))
         return tuple(stat.mean[:3]+stat.stddev[:3])
     except:
         print(f"Error Opening file: {img_path}")
         return 
-
 
 def main():
     bw_img_path = './goodeg.png'
@@ -54,6 +47,8 @@ if __name__ == '__main__':
     main()
 
 
+# TODO: decide per image, batch or entire
+ 
 #### FOR WHOLE DATASET, WORKAROUND STD
 
 # def BW_list_mean_std(img_dir):
