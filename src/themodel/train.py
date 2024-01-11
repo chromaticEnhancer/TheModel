@@ -214,6 +214,7 @@ def main():
         bw_manga_path=settings.TRAIN_BW_MANGA_PATH,
         color_manga_path=settings.TRAIN_COLOR_MANGA_PATH,
     )
+
     train_loader = DataLoader(
         dataset=train_dataset,
         batch_size=settings.BATCH_SIZE,
@@ -260,3 +261,7 @@ def main():
 
         plt.show()
     # fmt:on
+
+
+if __name__ == "__main__":
+    main()

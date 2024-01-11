@@ -1,7 +1,9 @@
 import os
 
+import numpy
 import torch
 import torchvision
+from PIL import Image
 from torch.utils.data import Dataset
 
 from themodel import settings
@@ -22,14 +24,9 @@ class BWColorMangaDataset(Dataset):
 
     def __getitem__(self, index) -> tuple[torch.Tensor, torch.Tensor]:
         "bw_image, color_image"
-        bw_image = torchvision.io.read_image(
-            path=os.path.join(self.bw_root, self.bw_images[index]),
-            mode=torchvision.io.ImageReadMode.RGB,
-        )
-        color_image = torchvision.io.read_image(
-            path=os.path.join(self.color_root, self.color_images[index]),
-            mode=torchvision.io.ImageReadMode.RGB,
-        )
+        
+        bw_image = numpy.array(Image.open(fp=os.path.join(self.bw_root, self.bw_images[index])).convert("RGB"))
+        color_image = numpy.array(Image.open(fp=os.path.join(self.color_root, self.color_images[index])).convert("RGB"))
 
         normalise_color = normalize_image(is_color=True)
         normalise_bw = normalize_image(is_color=False)
