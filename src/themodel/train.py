@@ -42,7 +42,6 @@ def train_model(
         optimizer_disc, optimizer_gen,
         l1, perceptual_loss, adverserial_loss, white_color_penalty_loss,
         train_loader,
-        gen_scaler, disc_scaler,
         epoch_no
     ):
     #fmt: on
@@ -53,91 +52,86 @@ def train_model(
         color = color.to(settings.DEVICE)
 
         #for discriminator we only we adverserial_loss
-        with torch.cuda.amp.autocast(): #type:ignore
-            generated_color = co_gen(bw)
-            co_disc_res_for_color = co_disc(color)
-            co_disc_res_for_generated = co_disc(generated_color.detach())
+        generated_color = co_gen(bw)
+        co_disc_res_for_color = co_disc(color)
+        co_disc_res_for_generated = co_disc(generated_color.detach())
 
-            generated_bw = bw_gen(color)
-            bw_disc_res_for_bw = bw_disc(bw)
-            bw_disc_res_for_generated = bw_disc(generated_bw.detach())
+        generated_bw = bw_gen(color)
+        bw_disc_res_for_bw = bw_disc(bw)
+        bw_disc_res_for_generated = bw_disc(generated_bw.detach())
 
-            color_disc_loss_color = adverserial_loss(co_disc_res_for_color, torch.ones_like(co_disc_res_for_color))
-            color_disc_loss_generated = adverserial_loss(co_disc_res_for_generated, torch.zeros_like(co_disc_res_for_generated))
+        color_disc_loss_color = adverserial_loss(co_disc_res_for_color, torch.ones_like(co_disc_res_for_color))
+        color_disc_loss_generated = adverserial_loss(co_disc_res_for_generated, torch.zeros_like(co_disc_res_for_generated))
 
-            bw_disc_loss_bw = adverserial_loss(bw_disc_res_for_bw, torch.ones_like(bw_disc_res_for_bw))
-            bw_disc_loss_generatd = adverserial_loss(bw_disc_res_for_generated, torch.zeros_like(bw_disc_res_for_generated))
+        bw_disc_loss_bw = adverserial_loss(bw_disc_res_for_bw, torch.ones_like(bw_disc_res_for_bw))
+        bw_disc_loss_generatd = adverserial_loss(bw_disc_res_for_generated, torch.zeros_like(bw_disc_res_for_generated))
 
-            color_disc_loss_total = color_disc_loss_color + color_disc_loss_generated
-            bw_disc_loss_total = bw_disc_loss_bw + bw_disc_loss_generatd
+        color_disc_loss_total = color_disc_loss_color + color_disc_loss_generated
+        bw_disc_loss_total = bw_disc_loss_bw + bw_disc_loss_generatd
 
-            disc_loss = (color_disc_loss_total + bw_disc_loss_total) / 2
+        disc_loss = (color_disc_loss_total + bw_disc_loss_total) / 2
 
-            plot_ad_co_disc.append(color_disc_loss_total)
-            plot_ad_bw_disc.append(bw_disc_loss_total)
+        plot_ad_co_disc.append(color_disc_loss_total.item())
+        plot_ad_bw_disc.append(bw_disc_loss_total.item())
 
 
         optimizer_disc.zero_grad()
-        disc_scaler.scale(disc_loss).backward()
-        disc_scaler.step(optimizer_disc)
-        disc_scaler.update()
+        disc_loss.backward()
+        optimizer_disc.step()
+    
 
-        with torch.cuda.amp.autocast(): #type:ignore
+        #adverserial loss for generators
+        bw_disc_res_for_generated = bw_disc(generated_bw)
+        color_disc_res_for_generated = co_disc(generated_color)
+        bw_disc_loss_for_generated = adverserial_loss(bw_disc_res_for_generated, torch.ones_like(bw_disc_res_for_generated))
+        color_disc_loss_for_generated = adverserial_loss(color_disc_res_for_generated, torch.ones_like(color_disc_res_for_generated))
 
-            #adverserial loss for generators
-            bw_disc_res_for_generated = bw_disc(generated_bw)
-            color_disc_res_for_generated = co_disc(generated_color)
-            bw_disc_loss_for_generated = adverserial_loss(bw_disc_res_for_generated, torch.ones_like(bw_disc_res_for_generated))
-            color_disc_loss_for_generated = adverserial_loss(color_disc_res_for_generated, torch.ones_like(color_disc_res_for_generated))
+        #l1 loss
+        l1_bw_out = bw_gen(color)
+        l1_color_out = co_gen(bw)
+        l1_loss_for_bw = l1(l1_bw_out, bw)
+        l1_loss_for_color = l1(l1_color_out, color)
 
-            #l1 loss
-            l1_bw_out = bw_gen(color)
-            l1_color_out = co_gen(bw)
-            l1_loss_for_bw = l1(l1_bw_out, bw)
-            l1_loss_for_color = l1(l1_color_out, color)
-
-            plot_l1_bw_gen.append(l1_loss_for_bw)
-            plot_l1_co_gen.append(l1_loss_for_color)
+        plot_l1_bw_gen.append(l1_loss_for_bw.item())
+        plot_l1_co_gen.append(l1_loss_for_color.item())
 
 
-            #perceptual loss
-            per_bw_out = bw_gen(color)
-            per_color_out = co_gen(bw)
-            perceptual_loss_for_bw = perceptual_loss(per_bw_out, bw)
-            perceptual_loss_for_color = perceptual_loss(per_color_out, color)
+        #perceptual loss
+        per_bw_out = bw_gen(color)
+        per_color_out = co_gen(bw)
+        perceptual_loss_for_bw = perceptual_loss(per_bw_out, bw)
+        perceptual_loss_for_color = perceptual_loss(per_color_out, color)
 
-            plot_per_bw_gen.append(perceptual_loss_for_bw)
-            plot_per_co_gen.append(perceptual_loss_for_color)
+        plot_per_bw_gen.append(perceptual_loss_for_bw.item())
+        plot_per_co_gen.append(perceptual_loss_for_color.item())
 
-            #white color penalty loss
-            white_color_out = co_gen(bw)
-            white_penalty_loss_for_color = white_color_penalty_loss(color, white_color_out)
+        #white color penalty loss
+        white_color_out = co_gen(bw)
+        white_penalty_loss_for_color = white_color_penalty_loss(color, white_color_out)
 
-            plot_wh_co_gen.append(white_penalty_loss_for_color)
+        plot_wh_co_gen.append(white_penalty_loss_for_color.item())
 
-            #cycle consistency loss
-            cycle_bw = bw_gen(generated_color)
-            cycle_color = co_gen(generated_bw)
-            cycle_bw_loss = l1(bw, cycle_bw)
-            cycle_color_loss = l1(color, cycle_color)
+        #cycle consistency loss
+        cycle_bw = bw_gen(generated_color)
+        cycle_color = co_gen(generated_bw)
+        cycle_bw_loss = l1(bw, cycle_bw)
+        cycle_color_loss = l1(color, cycle_color)
 
-            plot_cycle_bw_gen.append(cycle_bw_loss)
-            plot_cycle_co_gen.append(cycle_color_loss)
+        plot_cycle_bw_gen.append(cycle_bw_loss.item())
+        plot_cycle_co_gen.append(cycle_color_loss.item())
 
-            generator_loss = (
-                bw_disc_loss_for_generated + color_disc_loss_for_generated
-                + l1_loss_for_bw + l1_loss_for_color
-                + perceptual_loss_for_bw + perceptual_loss_for_color
-                + white_penalty_loss_for_color
-                + cycle_bw_loss * settings.LAMBDA_CYCLE + cycle_color_loss * settings.LAMBDA_CYCLE
-            )
+        generator_loss = (
+            bw_disc_loss_for_generated + color_disc_loss_for_generated
+            + l1_loss_for_bw + l1_loss_for_color
+            + perceptual_loss_for_bw + perceptual_loss_for_color
+            + white_penalty_loss_for_color
+            + cycle_bw_loss * settings.LAMBDA_CYCLE + cycle_color_loss * settings.LAMBDA_CYCLE
+        )
 
         
         optimizer_gen.zero_grad()
-        gen_scaler.scale(generator_loss).backward()
-        gen_scaler.step(optimizer_gen)
-        gen_scaler.update()
-
+        generator_loss.backward()
+        optimizer_gen.step()
 
     # manage the losses
     manage_loss(plot_ad_bw_disc, epoch_no=epoch_no)
@@ -229,10 +223,6 @@ def main():
         pin_memory=True,
     )
 
-    gen_scaler = torch.cuda.amp.GradScaler()  # type:ignore
-    disc_scaler = torch.cuda.amp.GradScaler()  # type:ignore
-
-
 
     # fmt: off
     for epoch in range(settings.NUM_EPOCHS):
@@ -241,7 +231,6 @@ def main():
             optimizer_disc, optimizer_gen,
             l1, perceptual_loss, adverserial_loss, white_color_penalty_loss,
             train_loader,
-            gen_scaler, disc_scaler,
             epoch
         )
     

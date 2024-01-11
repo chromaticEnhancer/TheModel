@@ -28,13 +28,13 @@ class Settings(BaseSettings):
     LEARNING_RATE: float = 1e-5
     LAMBDA_CYCLE: int = 10
     NUM_WORKERS: int = 2
-    NUM_EPOCHS: int = 10
+    NUM_EPOCHS: int = 100
 
     TRAIN_BW_MANGA_PATH: str = "./data/train/bw"
     TRAIN_COLOR_MANGA_PATH: str = "./data/train/color"
 
     # DEVICE: str = "cuda" if torch.cuda.is_available() else "cpu"
-    DEVICE: str = "cpu"
+    DEVICE: str = "cuda"
 
     LOAD_CHECKPOINTS: bool = False
     SAVE_CHECKPOINTS: bool = True
