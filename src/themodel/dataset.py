@@ -38,7 +38,7 @@ class BWColorMangaDataset(Dataset):
 
     
         
-        return normalise_bw(bw_image / 1.0), normalise_color(color_image / 1.0)
+        return normalise_bw(bw_image / 255.0), normalise_color(color_image / 255.0)
     
 
 
