@@ -39,7 +39,7 @@ plot_cycle_bw_gen = []
 def train_model(
         bw_disc, co_disc, bw_gen, co_gen,
         optimizer_disc, optimizer_gen,
-        l1, adverserial_loss, white_color_penalty_loss,
+        l1, adverserial_loss, #white_color_penalty_loss,
         train_loader,
         epoch_no
     ):
@@ -198,7 +198,7 @@ def main():
     l1 = nn.L1Loss()
     # perceptual_loss = VGGPerceptualLoss().to(settings.DEVICE)
     adverserial_loss = nn.BCEWithLogitsLoss()
-    white_color_penalty_loss = white_color_penalty
+    # white_color_penalty_loss = white_color_penalty
 
     if settings.LOAD_CHECKPOINTS:
         load_model(
@@ -248,7 +248,7 @@ def main():
         train_model(
             bw_disc, co_disc, bw_gen, co_gen,
             optimizer_disc, optimizer_gen,
-            l1, adverserial_loss, white_color_penalty_loss,
+            l1, adverserial_loss, #white_color_penalty_loss,
             train_loader,
             epoch
         )

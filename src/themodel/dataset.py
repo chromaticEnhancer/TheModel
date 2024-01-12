@@ -1,6 +1,5 @@
 import os
 
-import numpy
 import torch
 import torchvision
 from torch.utils.data import Dataset
