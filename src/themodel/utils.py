@@ -84,10 +84,10 @@ def normalize_image(is_color: bool = True):
     transform = transforms.Compose(
         [
             transforms.Resize(size=(settings.IMAGE_HEIGHT, settings.IMAGE_WIDTH), antialias=True),#type:ignore
-            transforms.Normalize(
-                mean=mean,
-                std=std
-            ),
+            # transforms.Normalize(
+            #     mean=mean,
+            #     std=std
+            # ),
         ]
     )
 
