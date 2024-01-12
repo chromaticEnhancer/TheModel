@@ -3,12 +3,12 @@ import torch.nn as nn
 
 
 class PatchGAN(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, in_channels: int) -> None:
         super().__init__()
 
         self.layers = nn.Sequential(
             nn.Conv2d(
-                in_channels=3,
+                in_channels=in_channels,
                 out_channels=64,
                 kernel_size=4,
                 stride=2,
@@ -79,6 +79,6 @@ class PatchGAN(nn.Module):
 
 if __name__ == "__main__":
     image = torch.randn(1, 3, 64, 64)
-    model = PatchGAN()
+    model = PatchGAN(3)
     out = model(image)
     print(out.shape)
