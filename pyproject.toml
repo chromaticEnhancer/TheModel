@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "themodel"
-version = "1.0.0"
+version = "2.0.0"
 description = "A python package that takes your boring b&W manga and colorises it."
 
 requires-python = ">=3.10, <3.12"
