@@ -51,15 +51,20 @@ def train_model(
         bw = bw.to(settings.DEVICE)
         color = color.to(settings.DEVICE)
 
-        #for discriminator we only we adverserial_loss
+
+        # Discriminator
+
         generated_color = co_gen(bw)
         co_disc_res_for_color = co_disc(color)
         co_disc_res_for_generated = co_disc(generated_color.detach())
+
 
         generated_bw = bw_gen(color)
         bw_disc_res_for_bw = bw_disc(bw)
         bw_disc_res_for_generated = bw_disc(generated_bw.detach())
 
+
+        #for discriminator we only we adverserial_loss
         color_disc_loss_color = adverserial_loss(co_disc_res_for_color, torch.ones_like(co_disc_res_for_color))
         color_disc_loss_generated = adverserial_loss(co_disc_res_for_generated, torch.zeros_like(co_disc_res_for_generated))
 
@@ -79,41 +84,45 @@ def train_model(
         disc_loss.backward()
         optimizer_disc.step()
     
+        #Generator
+
+        generated_color_g = co_gen(bw)
+        generated_bw_g = bw_gen(color)
 
         #adverserial loss for generators
-        bw_disc_res_for_generated = bw_disc(generated_bw)
-        color_disc_res_for_generated = co_disc(generated_color)
+        bw_disc_res_for_generated = bw_disc(generated_bw_g)
+        color_disc_res_for_generated = co_disc(generated_color_g)
         bw_disc_loss_for_generated = adverserial_loss(bw_disc_res_for_generated, torch.ones_like(bw_disc_res_for_generated))
         color_disc_loss_for_generated = adverserial_loss(color_disc_res_for_generated, torch.ones_like(color_disc_res_for_generated))
 
         #l1 loss
-        l1_bw_out = bw_gen(color)
-        l1_color_out = co_gen(bw)
-        l1_loss_for_bw = l1(l1_bw_out, bw)
-        l1_loss_for_color = l1(l1_color_out, color)
+        # l1_bw_out = bw_gen(color)
+        # l1_color_out = co_gen(bw)
+        l1_loss_for_bw = l1(generated_bw_g, bw)
+        l1_loss_for_color = l1(generated_color_g, color)
 
         plot_l1_bw_gen.append(l1_loss_for_bw.item())
         plot_l1_co_gen.append(l1_loss_for_color.item())
 
 
         #perceptual loss
-        per_bw_out = bw_gen(color)
-        per_color_out = co_gen(bw)
-        perceptual_loss_for_bw = perceptual_loss(per_bw_out, bw)
-        perceptual_loss_for_color = perceptual_loss(per_color_out, color)
+        # per_bw_out = bw_gen(color)
+        # per_color_out = co_gen(bw)
+        perceptual_loss_for_bw = perceptual_loss(generated_bw_g, bw)
+        perceptual_loss_for_color = perceptual_loss(generated_color_g, color)
 
         plot_per_bw_gen.append(perceptual_loss_for_bw.item())
         plot_per_co_gen.append(perceptual_loss_for_color.item())
 
         #white color penalty loss
-        white_color_out = co_gen(bw)
-        white_penalty_loss_for_color = white_color_penalty_loss(color, white_color_out)
+        # white_color_out = co_gen(bw)
+        white_penalty_loss_for_color = white_color_penalty_loss(color, generated_color_g)
 
         plot_wh_co_gen.append(white_penalty_loss_for_color.item())
 
         #cycle consistency loss
-        cycle_bw = bw_gen(generated_color)
-        cycle_color = co_gen(generated_bw)
+        cycle_bw = bw_gen(generated_color_g)
+        cycle_color = co_gen(generated_bw_g)
         cycle_bw_loss = l1(bw, cycle_bw)
         cycle_color_loss = l1(color, cycle_color)
 
@@ -156,11 +165,11 @@ def train_model(
 def main():
     # make_deterministic()
 
-    bw_disc = PatchGAN().to(settings.DEVICE)
-    co_disc = PatchGAN().to(settings.DEVICE)
+    bw_disc = PatchGAN(in_channels=1).to(settings.DEVICE)
+    co_disc = PatchGAN(in_channels=3).to(settings.DEVICE)
 
-    bw_gen = UNet().to(settings.DEVICE)
-    co_gen = UNet().to(settings.DEVICE)
+    bw_gen = UNet(in_channels=3, out_channels=1).to(settings.DEVICE)
+    co_gen = UNet(in_channels=1, out_channels=3).to(settings.DEVICE)
 
 
     optimizer_disc = optimizer.Adam(
