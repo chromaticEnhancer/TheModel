@@ -9,7 +9,6 @@ from themodel.utils import (
     load_model,
     CheckpointTypes,
     make_deterministic,
-    manage_loss,
     save_plots,
 )
 
@@ -47,6 +46,19 @@ def train_model(
     #fmt: on
     
 
+    #avgerage loss
+    avg_loss_ad_co_disc = []
+    avg_loss_ad_bw_disc = []
+
+    avg_loss_l1_co_gen = []
+    avg_loss_l1_bw_gen = []
+
+    avg_loss_wh_pen_co_gen = []
+
+    avg_loss_cy_co_gen = []
+    avg_loss_cy_bw_gen = []
+
+
     for bw, color in tqdm(train_loader, leave=True, desc=f'Epoch_no: {epoch_no}'):
         bw = bw.to(settings.DEVICE)
         color = color.to(settings.DEVICE)
@@ -76,8 +88,8 @@ def train_model(
 
         disc_loss = (color_disc_loss_total + bw_disc_loss_total) / 2
 
-        plot_ad_co_disc.append(color_disc_loss_total.item())
-        plot_ad_bw_disc.append(bw_disc_loss_total.item())
+        avg_loss_ad_co_disc.append(color_disc_loss_total.item())
+        avg_loss_ad_bw_disc.append(bw_disc_loss_total.item())
 
 
         optimizer_disc.zero_grad()
@@ -101,8 +113,8 @@ def train_model(
         l1_loss_for_bw = l1(generated_bw_g, bw)
         l1_loss_for_color = l1(generated_color_g, color)
 
-        plot_l1_bw_gen.append(l1_loss_for_bw.item())
-        plot_l1_co_gen.append(l1_loss_for_color.item())
+        avg_loss_l1_bw_gen.append(l1_loss_for_bw.item())
+        avg_loss_l1_co_gen.append(l1_loss_for_color.item())
 
 
         #perceptual loss
@@ -117,8 +129,8 @@ def train_model(
         #white color penalty loss
         # white_color_out = co_gen(bw)
         white_penalty_loss_for_color = white_color_penalty_loss(color, generated_color_g)
+        avg_loss_wh_pen_co_gen.append(white_penalty_loss_for_color.item())
 
-        plot_wh_co_gen.append(white_penalty_loss_for_color.item())
 
         #cycle consistency loss
         cycle_bw = bw_gen(generated_color_g)
@@ -126,8 +138,8 @@ def train_model(
         cycle_bw_loss = l1(bw, cycle_bw)
         cycle_color_loss = l1(color, cycle_color)
 
-        plot_cycle_bw_gen.append(cycle_bw_loss.item())
-        plot_cycle_co_gen.append(cycle_color_loss.item())
+        avg_loss_cy_bw_gen.append(cycle_bw_loss.item())
+        avg_loss_cy_co_gen.append(cycle_color_loss.item())
 
         generator_loss = (
             bw_disc_loss_for_generated + color_disc_loss_for_generated
@@ -143,15 +155,13 @@ def train_model(
         optimizer_gen.step()
 
     # manage the losses
-    manage_loss(plot_ad_bw_disc, epoch_no=epoch_no)
-    manage_loss(plot_ad_co_disc, epoch_no=epoch_no)
-    manage_loss(plot_l1_bw_gen, epoch_no=epoch_no)
-    manage_loss(plot_l1_co_gen, epoch_no=epoch_no)
-    # manage_loss(plot_per_bw_gen, epoch_no=epoch_no)
-    # manage_loss(plot_per_co_gen, epoch_no=epoch_no)
-    manage_loss(plot_wh_co_gen, epoch_no=epoch_no)
-    manage_loss(plot_cycle_bw_gen, epoch_no=epoch_no)
-    manage_loss(plot_cycle_co_gen, epoch_no=epoch_no)
+    plot_ad_bw_disc.append(sum(avg_loss_ad_bw_disc) / len(avg_loss_ad_bw_disc))
+    plot_ad_co_disc.append(sum(avg_loss_ad_co_disc) / len(avg_loss_ad_co_disc))
+    plot_l1_bw_gen.append(sum(avg_loss_l1_bw_gen) / len(avg_loss_l1_bw_gen))
+    plot_l1_co_gen.append(sum(avg_loss_l1_co_gen) / len(avg_loss_l1_co_gen))
+    plot_wh_co_gen.append(sum(avg_loss_wh_pen_co_gen) / len(avg_loss_wh_pen_co_gen))
+    plot_cycle_bw_gen.append(sum(avg_loss_cy_bw_gen) / len(avg_loss_cy_co_gen))
+    plot_cycle_co_gen.append(sum(avg_loss_cy_co_gen) / len(avg_loss_cy_co_gen))
 
 
     if settings.SAVE_CHECKPOINTS:
@@ -246,7 +256,7 @@ def main():
     # fmt:on
         
     save_model(co_gen, optimizer_gen, CheckpointTypes.COLOR_GENERATOR)
-       
+
     save_plots(plot_ad_bw_disc, 'BW Discriminator', plot_ad_co_disc, 'Color Discriminator', 'Adverserial Loss')
     save_plots(plot_l1_bw_gen, 'BW Generator', plot_l1_co_gen, 'Color Generator', 'L1 Loss')
     # save_plots(plot_per_bw_gen, 'BW Generator', plot_per_co_gen, 'Color Generator', 'Perceptual Loss')

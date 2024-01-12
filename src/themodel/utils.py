@@ -111,16 +111,6 @@ def denormalize_image(image: torch.Tensor, is_color: bool = True):
     return image
 
 
-def manage_loss(loss_list: list, epoch_no: int)-> list:
-    sum = 0
-    for i in range(epoch_no, len(loss_list)):
-        sum += loss_list[i]
-    
-    loss_list[epoch_no] = sum / len(loss_list[epoch_no:])
-
-    return loss_list[0:epoch_no + 1]
-
-
 def save_plots(loss1: list, l1_label: str, loss2: Optional[list], l2_label: Optional[str], title: str):
     plt.figure()
     plt.plot(loss1, label=l1_label)
@@ -138,7 +128,3 @@ def save_plots(loss1: list, l1_label: str, loss2: Optional[list], l2_label: Opti
 # TO CALCULATE MEAN, SD ( OF EACH CHANNEL AND OF 2 DATASET (B&W / COLOURED))
 # GENERATING TOTAL OF 6 VALUES
 
-    
-if __name__ == "__main__":
-    loss = [1, 2, 3]
-    print(manage_loss(loss, 1))
