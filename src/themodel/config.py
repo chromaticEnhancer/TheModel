@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     TRAIN_COLOR_MANGA_PATH: str = "./data/train/color"
 
     # DEVICE: str = "cuda" if torch.cuda.is_available() else "cpu"
-    DEVICE: str = "cuda"
+    DEVICE: str = "cuda" if torch.cuda.is_available() else "cpu"
 
     LOAD_CHECKPOINTS: bool = False
     SAVE_CHECKPOINTS: bool = True
