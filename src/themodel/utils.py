@@ -57,7 +57,13 @@ def load_model(
         for param_group in optimizer.param_groups:
             param_group["lr"] = lr
 
-
+def load_generator(model, checkpoint_type: Literal[CheckpointTypes.COLOR_GENERATOR]):
+    checkpoint = torch.load(
+        f=os.path.join(settings.CHECKPOINTS_FOLDER, checkpoint_type.value),
+        map_location=settings.DEVICE,
+    )
+    
+    model.load_state_dict(checkpoint["model"])
 
 def make_deterministic():
     seed=0
@@ -72,8 +78,8 @@ def normalize_image(is_color: bool = True):
     std = (settings.DATASET_STD_R_CO, settings.DATASET_STD_G_CO, settings.DATASET_STD_B_CO)
 
     if not is_color:
-        mean = (settings.DATASET_MEAN_R_BW, settings.DATASET_MEAN_G_BW, settings.DATASET_MEAN_B_BW)
-        std = (settings.DATASET_STD_R_BW, settings.DATASET_STD_G_BW, settings.DATASET_STD_B_BW)
+        mean = (settings.DATASET_MEAN_R_BW)
+        std = (settings.DATASET_STD_R_BW)
 
     transform = transforms.Compose(
         [
