@@ -8,9 +8,9 @@ def colorize(input_path: str, output_path: str):
     model = UNet(in_channels=1, out_channels=3)
     load_generator(model=model, checkpoint_type=CheckpointTypes.COLOR_GENERATOR)
 
-    image = torchvision.io.read_image(path=input_path, mode=torchvision.io.ImageReadMode.RGB)
+    image = torchvision.io.read_image(path=input_path, mode=torchvision.io.ImageReadMode.GRAY)
     normalize = normalize_image(is_color=False)
-    image = normalize(image/1.0)
+    image = normalize(image/255.0)
     out = model(image.unsqueeze(0))
     out = out.squeeze(0).byte()
     
