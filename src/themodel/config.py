@@ -32,6 +32,7 @@ class Settings(BaseSettings):
 
     TRAIN_BW_MANGA_PATH: str = "./data/train/bw"
     TRAIN_COLOR_MANGA_PATH: str = "./data/train/color"
+    CBZ_FILES: str = "./data/cbz"
 
     # DEVICE: str = "cuda" if torch.cuda.is_available() else "cpu"
     DEVICE: str = "cuda"
