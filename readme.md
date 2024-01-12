@@ -7,6 +7,7 @@
 
 ## TODO
 - MODEL TRAIN GARAUNA MILNE BANAM
+- TEST WITH PADDING MODE = REFLECT
 
 ## PROCEDURE
 - Initially overfit the model in single image
