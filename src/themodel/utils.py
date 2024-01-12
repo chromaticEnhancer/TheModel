@@ -57,7 +57,13 @@ def load_model(
         for param_group in optimizer.param_groups:
             param_group["lr"] = lr
 
-
+def load_generator(model, checkpoint_type: Literal[CheckpointTypes.COLOR_GENERATOR]):
+    checkpoint = torch.load(
+        f=os.path.join(settings.CHECKPOINTS_FOLDER, checkpoint_type.value),
+        map_location=settings.DEVICE,
+    )
+    
+    model.load_state_dict(checkpoint["model"])
 
 def make_deterministic():
     seed=0
@@ -72,16 +78,16 @@ def normalize_image(is_color: bool = True):
     std = (settings.DATASET_STD_R_CO, settings.DATASET_STD_G_CO, settings.DATASET_STD_B_CO)
 
     if not is_color:
-        mean = (settings.DATASET_MEAN_R_BW, settings.DATASET_MEAN_G_BW, settings.DATASET_MEAN_B_BW)
-        std = (settings.DATASET_STD_R_BW, settings.DATASET_STD_G_BW, settings.DATASET_STD_B_BW)
+        mean = (settings.DATASET_MEAN_R_BW)
+        std = (settings.DATASET_STD_R_BW)
 
     transform = transforms.Compose(
         [
             transforms.Resize(size=(settings.IMAGE_HEIGHT, settings.IMAGE_WIDTH), antialias=True),#type:ignore
-            transforms.Normalize(
-                mean=mean,
-                std=std
-            ),
+            # transforms.Normalize(
+            #     mean=mean,
+            #     std=std
+            # ),
         ]
     )
 
@@ -105,16 +111,6 @@ def denormalize_image(image: torch.Tensor, is_color: bool = True):
     return image
 
 
-def manage_loss(loss_list: list, epoch_no: int)-> list:
-    sum = 0
-    for i in range(epoch_no, len(loss_list)):
-        sum += loss_list[i]
-    
-    loss_list[epoch_no] = sum / len(loss_list[epoch_no:])
-
-    return loss_list[0:epoch_no + 1]
-
-
 def save_plots(loss1: list, l1_label: str, loss2: Optional[list], l2_label: Optional[str], title: str):
     plt.figure()
     plt.plot(loss1, label=l1_label)
@@ -132,7 +128,3 @@ def save_plots(loss1: list, l1_label: str, loss2: Optional[list], l2_label: Opti
 # TO CALCULATE MEAN, SD ( OF EACH CHANNEL AND OF 2 DATASET (B&W / COLOURED))
 # GENERATING TOTAL OF 6 VALUES
 
-    
-if __name__ == "__main__":
-    loss = [1, 2, 3]
-    print(manage_loss(loss, 1))

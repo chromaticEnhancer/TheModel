@@ -22,8 +22,8 @@ class Settings(BaseSettings):
     DATASET_STD_G_BW: float = 0.3081
     DATASET_STD_B_BW: float = 0.3081
 
-    IMAGE_WIDTH: int = 112
-    IMAGE_HEIGHT: int = 112
+    IMAGE_WIDTH: int = 64
+    IMAGE_HEIGHT: int = 64
 
     LEARNING_RATE: float = 1e-5
     LAMBDA_CYCLE: int = 10
@@ -35,10 +35,10 @@ class Settings(BaseSettings):
     CBZ_FILES: str = "./data/cbz"
 
     # DEVICE: str = "cuda" if torch.cuda.is_available() else "cpu"
-    DEVICE: str = "cuda"
+    DEVICE: str = "cuda" if torch.cuda.is_available() else "cpu"
 
     LOAD_CHECKPOINTS: bool = False
-    SAVE_CHECKPOINTS: bool = True
+    SAVE_CHECKPOINTS: bool = False
     CHECKPOINTS_FOLDER: str = "./checkpoints"
 
     OUTPUT_FOLDER: str = "./output"

@@ -1,7 +1,6 @@
 import math
 from typing import Any
 
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -134,12 +133,12 @@ class SEBlockDecoderSide(nn.Module):
 
 
 class UNetEncoder(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, in_channels: int) -> None:
         super().__init__()
 
         self.cardinality = 32
         self.inplanes = 64
-        self.input_channels = 3  # code ma 1 channel xa
+        self.input_channels = in_channels  # code ma 1 channel xa
 
         self.layer1 = nn.Sequential(
             nn.Conv2d(
@@ -328,11 +327,11 @@ class UNetDecoder(nn.Module):
 
 
 class LocalFeatureExtractor(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, in_channels: int) -> None:
         super().__init__()
 
         self.layer1 = self.__conv_lay_w_leak(
-            in_channel=3, out_channel=32, is_first_layer=True
+            in_channel=in_channels, out_channel=32, is_first_layer=True
         )
         self.layer2 = self.__conv_lay_w_leak(in_channel=32, out_channel=64)
         self.layer3 = self.__conv_lay_w_leak(in_channel=64, out_channel=92)

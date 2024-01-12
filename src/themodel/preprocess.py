@@ -5,7 +5,7 @@ from PIL import Image
 import os
 from glob import glob
 
-from config import settings
+from themodel import settings
 
 
 def remove_coloured(main_output_dir=settings.TRAIN_BW_MANGA_PATH):

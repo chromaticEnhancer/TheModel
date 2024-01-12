@@ -26,21 +26,19 @@ class BWColorMangaDataset(Dataset):
         
         bw_image = torchvision.io.read_image(
             path=os.path.join(self.bw_root, self.bw_images[index]),
-            mode=torchvision.io.ImageReadMode.RGB,
+            mode=torchvision.io.ImageReadMode.GRAY,
         )
         color_image = torchvision.io.read_image(
             path=os.path.join(self.color_root, self.color_images[index]),
             mode=torchvision.io.ImageReadMode.RGB,
         )
-        
-        # return bw_image, color_image
 
         normalise_color = normalize_image(is_color=True)
         normalise_bw = normalize_image(is_color=False)
 
     
         
-        return normalise_bw(bw_image / 1.0), normalise_color(color_image / 1.0)
+        return normalise_bw(bw_image / 255.0), normalise_color(color_image / 255.0)
     
 
 
