@@ -42,7 +42,6 @@ def main():
     print(BW_img_mean_std(bw_img_path))
     print(C_image_mean_std(c_img_path))
 
-
 if __name__ == '__main__':
     main()
 
