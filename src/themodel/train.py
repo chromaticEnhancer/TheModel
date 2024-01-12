@@ -244,6 +244,9 @@ def main():
         )
     
     # fmt:on
+        
+    save_model(co_gen, optimizer_gen, CheckpointTypes.COLOR_GENERATOR)
+       
     save_plots(plot_ad_bw_disc, 'BW Discriminator', plot_ad_co_disc, 'Color Discriminator', 'Adverserial Loss')
     save_plots(plot_l1_bw_gen, 'BW Generator', plot_l1_co_gen, 'Color Generator', 'L1 Loss')
     # save_plots(plot_per_bw_gen, 'BW Generator', plot_per_co_gen, 'Color Generator', 'Perceptual Loss')
