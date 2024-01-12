@@ -32,7 +32,7 @@ class BWColorMangaDataset(Dataset):
             path=os.path.join(self.color_root, self.color_images[index]),
             mode=torchvision.io.ImageReadMode.RGB,
         )
-
+        
         # return bw_image, color_image
 
         normalise_color = normalize_image(is_color=True)
