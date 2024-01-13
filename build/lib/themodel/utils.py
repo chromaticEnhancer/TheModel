@@ -74,9 +74,6 @@ def make_deterministic():
 
 
 def normalize_image(is_color: bool = True):
-
-    #TODO: get single image mean from ../test/normalizer2.py. confirm if the following can be removed
-
     mean = (settings.DATASET_MEAN_R_CO, settings.DATASET_MEAN_G_CO, settings.DATASET_MEAN_B_CO)
     std = (settings.DATASET_STD_R_CO, settings.DATASET_STD_G_CO, settings.DATASET_STD_B_CO)
 
