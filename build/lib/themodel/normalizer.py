@@ -46,31 +46,23 @@ if __name__ == '__main__':
     main()
 
 
-import torch
-from torchvision.io import read_image
+# TODO: decide per image, batch or entire
+ 
+#### FOR WHOLE DATASET, WORKAROUND STD
 
-def get_mean_std(img_path):
-    """
-    Calculate the mean and standard deviation of an image tensor
-
-    Args:
-        img_path (str): The path to the image file.
-
-    Returns:
-        tuple: A tuple containing two lists - the means and standard deviations of the image channels.
-
-    """
-    means = []
-    stds = []
-    try:
-        img = read_image(img_path)
-        for i in range(img.shape[0]):
-            means.append(img[i, :, :].float().mean().item())
-            stds.append(img[i, :, :].float().std().item())
-        return means, stds
-    except Exception as e:
-        print(f"Error Opening file: {img_path}. Error: {e}")
-        return
+# def BW_list_mean_std(img_dir):
+#     dataset_means=[]
+#     dataset_stds=[]
+#     for filename in os.listdir(img_dir):
+#         filepath= os.path.join(img_dir, filename)
+#         img_mean, img_std= BW_img_mean_std(filepath)
+        
+#         dataset_means.append(img_mean)
+#         dataset_stds.append(img_std)
     
-print(get_mean_std('./goodeg.png'))
-print(get_mean_std('./c_goodeg.jpg'))
+#     return dataset_means, dataset_stds
+
+#combined_dataset_mean = np.mean(means)
+#combined_dataset_sd = np.mean(stds)
+#print(combined_dataset_mean, combined_dataset_sd)
+
