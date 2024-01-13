@@ -6,3 +6,4 @@ dist/
 checkpoints/
 output/
 test/
+build/
