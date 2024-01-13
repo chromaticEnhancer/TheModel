@@ -110,8 +110,8 @@ def train_model(
         color_disc_res_for_generated = co_disc(generated_color_g)
         bw_disc_loss_for_generated = adverserial_loss(bw_disc_res_for_generated, torch.ones_like(bw_disc_res_for_generated))
         color_disc_loss_for_generated = adverserial_loss(color_disc_res_for_generated, torch.ones_like(color_disc_res_for_generated))
-        avg_loss_ad_co_gen.append(color_disc_loss_for_generated)
-        avg_loss_ad_bw_gen.append(bw_disc_loss_for_generated)
+        avg_loss_ad_co_gen.append(color_disc_loss_for_generated.item())
+        avg_loss_ad_bw_gen.append(bw_disc_loss_for_generated.item())
 
         #l1 loss
         l1_loss_for_bw = l1(generated_bw_g, bw)
