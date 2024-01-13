@@ -172,6 +172,7 @@ def train_model(
 
 def main():
     # make_deterministic()
+    all_exceptions = None
 
     bw_disc = PatchGAN(in_channels=1).to(settings.DEVICE)
     co_disc = PatchGAN(in_channels=3).to(settings.DEVICE)
@@ -240,16 +241,18 @@ def main():
         pin_memory=True,
     )
 
-    
-    # fmt: off
-    for epoch in range(settings.NUM_EPOCHS):
-        train_model(
-            bw_disc, co_disc, bw_gen, co_gen,
-            optimizer_disc, optimizer_gen,
-            l1, adverserial_loss, white_color_penalty_loss,
-            train_loader,
-            epoch
-        )
+    try:
+        # fmt: off
+        for epoch in range(settings.NUM_EPOCHS):
+            train_model(
+                bw_disc, co_disc, bw_gen, co_gen,
+                optimizer_disc, optimizer_gen,
+                l1, adverserial_loss, white_color_penalty_loss,
+                train_loader,
+                epoch
+            )
+    except Exception as e:
+        all_exceptions = e
     
     # fmt:on
         
@@ -260,6 +263,10 @@ def main():
     # save_plots(plot_per_bw_gen, 'BW Generator', plot_per_co_gen, 'Color Generator', 'Perceptual Loss')
     save_plots(plot_wh_co_gen, 'Color Generator', None, None, 'White Color Penalty Loss')
     save_plots(plot_cycle_bw_gen, 'BW Generator', plot_cycle_co_gen, 'Color Generator', 'Cycle Consistency Loss')
+
+
+    if all_exceptions is not None:
+        raise all_exceptions
 
 
 
