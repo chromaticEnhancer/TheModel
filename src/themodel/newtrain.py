@@ -159,6 +159,11 @@ def main() -> None:
     erros = None
     gen, disc, vgg16 = get_models()
 
+    #send the models to device
+    gen = gen.to(settings.DEVICE)
+    disc = disc.to(settings.DEVICE)
+    vgg16 = vgg16.to(settings.DEVICE)
+
     #dataset preparation
     dataset = BWColorMangaDataset(bw_manga_path=settings.TRAIN_BW_MANGA_PATH, color_manga_path=settings.TRAIN_COLOR_MANGA_PATH)
 
