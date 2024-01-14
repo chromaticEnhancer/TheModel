@@ -156,18 +156,6 @@ class UNetEncoder(nn.Module):
         self.layer3 = self.__make_layer(out_channels=128, no_of_bottlenecks=4, stride=2)
         self.layer4 = self.__make_layer(out_channels=256, no_of_bottlenecks=6, stride=2)
 
-        # weights initialization
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2.0 / n))
-
-                if m.bias is not None:
-                    m.bias.data.zero_()
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
-
     def __downsample(
         self, in_channels: int, out_channels: int, stride: int
     ) -> nn.Sequential:

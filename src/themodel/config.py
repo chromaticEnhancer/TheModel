@@ -28,7 +28,12 @@ class Settings(BaseSettings):
     LEARNING_RATE: float = 1e-5
     LAMBDA_CYCLE: int = 10
     NUM_WORKERS: int = 2
-    NUM_EPOCHS: int = 100
+
+    NUM_EPOCHS: int = 3
+    DECAY_EPOCH: int = 10
+
+    GENERATOR_LR: float = 1e-4
+    DISCRIMINATOR_LR: float = 4e-4
 
     TRAIN_BW_MANGA_PATH: str = "./data/train/bw"
     TRAIN_COLOR_MANGA_PATH: str = "./data/train/color"
