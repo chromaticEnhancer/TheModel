@@ -135,7 +135,7 @@ def train(generator: nn.Module, discriminator: nn.Module, vgg16: nn.Module, load
 
         n = 0
         # loop over all the dataset
-        for i, bw, color in tqdm(loader, leave=True, desc=f"Epoch_no: {epoch}"):
+        for i, (bw, color) in enumerate(tqdm(loader, leave=True, desc=f"Epoch_no: {epoch}")):
             n = i
 
             if isDiscTurn:
