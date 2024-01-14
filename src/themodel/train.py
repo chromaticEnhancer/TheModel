@@ -259,9 +259,9 @@ def main():
     co_disc = PatchGAN(in_channels=3).to(settings.DEVICE)
 
     bw_gen = UNet(in_channels=3, out_channels=1).to(settings.DEVICE)
-    co_gen = UNet(in_channels=1, out_channels=3).to(settings.DEVICE)
+    # co_gen = UNet(in_channels=1, out_channels=3).to(settings.DEVICE)
     # bw_gen = Generator(in_channels=3, out_channels=1).to(settings.DEVICE)
-    # co_gen = Generator(in_channels=1, out_channels=3).to(settings.DEVICE)
+    co_gen = Generator(in_channels=1, out_channels=3).to(settings.DEVICE)
 
 
     optimizer_disc = optimizer.Adam(
