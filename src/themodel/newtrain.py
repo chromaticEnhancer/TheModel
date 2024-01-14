@@ -170,8 +170,8 @@ def main() -> None:
     loader = DataLoader(dataset=dataset, batch_size=settings.BATCH_SIZE, shuffle=True, num_workers=2)
 
     # Weights Initialization
-    kaiming_initialization(generator=gen)
-    xaivier_initialization(discriminator=disc)
+    # kaiming_initialization(generator=gen)
+    # xaivier_initialization(discriminator=disc)
 
     # Optimizers
     OptimGen, OptimDisc = get_optimizers(generator=gen, discriminator=disc)
