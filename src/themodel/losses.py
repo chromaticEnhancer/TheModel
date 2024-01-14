@@ -15,18 +15,3 @@ def white_color_penalty(actual_image: torch.Tensor, generated_image: torch.Tenso
     ).mean()
 
     return white_penalty
-
-
-class VGGPerceptualLoss(torch.nn.Module):
-    def __init__(self):
-        super(VGGPerceptualLoss, self).__init__()
-        self.vgg = models.vgg16(pretrained=True).features
-        self.vgg = torch.nn.Sequential(*list(self.vgg.children())[:16])
-        self.vgg.eval()
-        for param in self.vgg.parameters():
-            param.requires_grad = False
-
-    def forward(self, x, y):
-        x_vgg, y_vgg = self.vgg(x), self.vgg(y)
-        loss = torch.nn.functional.l1_loss(x_vgg, y_vgg)
-        return loss

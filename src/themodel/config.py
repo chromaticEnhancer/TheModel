@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     NUM_EPOCHS: int = 3
     DECAY_EPOCH: int = 10
 
+    USE_WHITE_COLOR_LOSS: bool = False
+    USE_INITIALIZED_WEIGHTS: bool = False
+
     GENERATOR_LR: float = 1e-4
     DISCRIMINATOR_LR: float = 4e-4
 

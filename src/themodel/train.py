@@ -1,362 +1,268 @@
+import torchvision
+
 from themodel.generator import UNet
 from themodel.discriminator import PatchGAN
 
 from themodel.config import settings
-from themodel.alternative import Generator
 from themodel.dataset import BWColorMangaDataset
-from themodel.losses import VGGPerceptualLoss, white_color_penalty
+from themodel.losses import white_color_penalty
 from themodel.utils import (
     save_model,
-    load_model,
     CheckpointTypes,
-    make_deterministic,
     save_plots,
 )
 
 import torch
 import torch.nn as nn
-import torch.optim as optimizer
 
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 
+def kaiming_initialization(generator: nn.Module) -> None:
+    for m in generator.modules():
+        if isinstance(m, nn.Conv2d):
+            nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu')
 
-# plot_ad_bw_disc = []
-# plot_ad_co_disc = []
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0)
 
-# plot_l1_co_gen = []
-# plot_l1_bw_gen = []
+def xaivier_initialization(discriminator: nn.Module) -> None:
+    for m in discriminator.modules():
+        if isinstance(m, nn.Conv2d):
+            nn.init.xavier_uniform_(m.weight)
 
-# plot_per_co_gen = []
-# plot_per_bw_gen = []
+def get_models() -> tuple[nn.Module, nn.Module, nn.Module, nn.Module, nn.Module]:
 
-# plot_wh_co_gen = []
-# plot_ad_co_gen = []
-# plot_ad_bw_gen = []
+    generatorBW = UNet(in_channels=3, out_channels=1).to(settings.DEVICE)
+    generatorColor = UNet(in_channels=1, out_channels=3).to(settings.DEVICE)
 
-# plot_cycle_co_gen = []
-# plot_cycle_bw_gen = []
+    discriminatorBW = PatchGAN(in_channels=1).to(settings.DEVICE)
+    discriminatorColor = PatchGAN(in_channels=3).to(settings.DEVICE)
 
-# plot_disc_real_loss = []
-# plot_disc_fake_loss = []
+    vgg16 = torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT).eval().to(settings.DEVICE)
+    for param in vgg16.parameters():
+        param.requires_grad = False
 
-# plot_gen_adv_loss = []
-# plot_gen_l1_loss = []
+    return generatorBW, generatorColor, discriminatorBW, discriminatorColor, vgg16
 
-plot_loss_disc_fake = []
-plot_loss_disc_real = []
-plot_gen_adv_loss = []
-plot_gen_l1_loss = []
+def get_optimizers(generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn.Module, discriminator: nn.Module) -> tuple[torch.optim.Optimizer, torch.optim.Optimizer]:
+    optimizerGen = torch.optim.Adam(params=list(generatorBW.parameters()) + list(generatorColor.parameters()), lr=settings.GENERATOR_LR, betas=(0.5, 0.999))
+    optimizerDisc = torch.optim.Adam(params=list(discriminatorBW.parameters()) + list(discriminatorBW.parameters()), lr=settings.DISCRIMINATOR_LR, betas=(0.5, 0.999))
 
+    return optimizerGen, optimizerDisc
 
-# fmt: off
-def train_model(
-        bw_disc, co_disc, bw_gen, co_gen,
-        optimizer_disc, optimizer_gen,
-        l1, adverserial_loss, #white_color_penalty_loss,
-        train_loader,
-        epoch_no
-    ):
-    #fmt: on
+def decrease_lr(optimizer: torch.optim.Optimizer) -> None:
+    for group in optimizer.param_groups:
+        group['lr'] /= 10
+
+def discriminator_step(bw: torch.Tensor, color: torch.Tensor, generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn.Module, discriminatorColor: nn.Module, optimizer: torch.optim.Optimizer) -> tuple[float, float]:
+    # we will only train the discriminator
+    adverserialLoss = nn.BCEWithLogitsLoss()
+
+    for p in discriminatorBW.parameters():
+        p.requires_grad = True
+
+    for p in discriminatorColor.parameters():
+        p.requires_grad = True
     
+    for p in generatorBW.parameters():
+        p.requires_grad = False
 
-    #avgerage loss
-    # avg_loss_ad_co_disc = []
-    # avg_loss_ad_bw_disc = []
-
-    # avg_loss_l1_co_gen = []
-    # avg_loss_l1_bw_gen = []
-
-    # avg_loss_wh_pen_co_gen = []
-    # avg_loss_ad_co_gen = []
-    # avg_loss_ad_bw_gen = []
-
-    # avg_loss_cy_co_gen = []
-    # avg_loss_cy_bw_gen = []
-
-    avg_loss_disc_fake = []
-    avg_loss_disc_real = []
-
-    avg_gen_adv_loss = []
-    avg_gen_l1_loss = []
-
-    for bw, color in tqdm(train_loader, leave=True, desc=f"Epoch_no: {epoch_no}"):
-        bw = bw.to(settings.DEVICE)
-        color = color.to(settings.DEVICE)
-
-        # Train the discriminator
-        co_disc.zero_grad()
-
-        # Train on real data
-        real_output = co_disc(color)
-        real_loss = adverserial_loss(real_output, torch.ones_like(real_output))
-        avg_loss_disc_real.append(real_loss.item())
-
-        # Train on fake data
-        fake_data = co_gen(bw)
-        fake_output = co_disc(fake_data.detach())
-        fake_loss = adverserial_loss(fake_output, torch.zeros_like(fake_output))
-        avg_loss_disc_fake.append(fake_loss.item())
-
-        #update the discriminator
-        d_loss = real_loss + fake_loss
-        d_loss.backward()
-        optimizer_disc.step()
-
-
-        #train the generator
-        co_gen.zero_grad()
-
-        #generate fake data
-        fake_data = co_gen(bw)
-
-        #compute generator loss
-        fake_output = co_disc(fake_data)
-        g_adv_loss = adverserial_loss(fake_output, torch.ones_like(fake_output))
-        avg_gen_adv_loss.append(g_adv_loss.item())
-
-        fake_out_gen = co_gen(bw)
-        g_l1_loss = l1(color, fake_out_gen)
-        avg_gen_l1_loss.append(g_l1_loss.item())
-
-        g_loss = g_adv_loss + g_l1_loss
-
-        #update the generator
-        g_loss.backward()
-        optimizer_gen.step()
-
-
-
-
-    # for bw, color in tqdm(train_loader, leave=True, desc=f'Epoch_no: {epoch_no}'):
-    #     bw = bw.to(settings.DEVICE)
-    #     color = color.to(settings.DEVICE)
-
-
-    #     # Discriminator
-        
-        
-
-    #     generated_color = co_gen(bw)
-    #     co_disc_res_for_color = co_disc(color)
-    #     co_disc_res_for_generated = co_disc(generated_color.detach())
-
-
-    #     generated_bw = bw_gen(color)
-    #     bw_disc_res_for_bw = bw_disc(bw)
-    #     bw_disc_res_for_generated = bw_disc(generated_bw.detach())
-
-
-    #     #for discriminator we only we adverserial_loss
-    #     color_disc_loss_color = adverserial_loss(co_disc_res_for_color, torch.ones_like(co_disc_res_for_color))
-    #     color_disc_loss_generated = adverserial_loss(co_disc_res_for_generated, torch.zeros_like(co_disc_res_for_generated))
-
-    #     bw_disc_loss_bw = adverserial_loss(bw_disc_res_for_bw, torch.ones_like(bw_disc_res_for_bw))
-    #     bw_disc_loss_generatd = adverserial_loss(bw_disc_res_for_generated, torch.zeros_like(bw_disc_res_for_generated))
-
-    #     color_disc_loss_total = color_disc_loss_color + color_disc_loss_generated
-    #     bw_disc_loss_total = bw_disc_loss_bw + bw_disc_loss_generatd
-
-    #     disc_loss = (color_disc_loss_total + bw_disc_loss_total) / 2
-
-    #     avg_loss_ad_co_disc.append(color_disc_loss_total.item())
-    #     avg_loss_ad_bw_disc.append(bw_disc_loss_total.item())
-
-
-    #     optimizer_disc.zero_grad()
-    #     disc_loss.backward()
-    #     optimizer_disc.step()
+    for p in generatorColor.parameters():
+        p.requires_grad = False
     
-    #     #Generator
+    discriminatorBW.zero_grad()
+    discriminatorColor.zero_grad()
 
-    #     # generated_color_g = co_gen(bw)
-    #     # generated_bw_g = bw_gen(color)
+    bw = bw.to(settings.DEVICE)
+    color = color.to(settings.DEVICE)
 
-    #     #adverserial loss for generators
-    #     bw_disc_res_for_generated = bw_disc(generated_bw)
-    #     color_disc_res_for_generated = co_disc(generated_color)
-    #     bw_disc_loss_for_generated = adverserial_loss(bw_disc_res_for_generated, torch.ones_like(bw_disc_res_for_generated))
-    #     color_disc_loss_for_generated = adverserial_loss(color_disc_res_for_generated, torch.ones_like(color_disc_res_for_generated))
+    # Train on real data
+    with torch.no_grad():
+        generatedColor = generatorColor(bw)
+        generatedBW = generatorBW(color)
 
-    #     avg_loss_ad_co_gen.append(color_disc_loss_for_generated.item())
-    #     avg_loss_ad_bw_gen.append(bw_disc_loss_for_generated.item())
+        generatedColor = generatedColor.detach()
+        generatedBW = generatedBW.detach()
 
-    #     #l1 loss
-    #     # l1_loss_for_bw = l1(generated_bw_g, bw)
-    #     # l1_loss_for_color = l1(generated_color_g, color)
+    
+    discOutputForGeneratedBW = discriminatorBW(generatedBW)
+    discOutputForRealBW = discriminatorBW(bw)
 
-    #     # avg_loss_l1_bw_gen.append(l1_loss_for_bw.item())
-    #     # avg_loss_l1_co_gen.append(l1_loss_for_color.item())
+    discOutputForGeneratedColor = discriminatorColor(generatedColor)
+    discOutputForRealColor = discriminatorColor(color)
+
+    adverserialLossForGeneratedBW = adverserialLoss(discOutputForGeneratedBW, torch.zeros_like(discOutputForGeneratedBW))
+    adverserialLossForRealBW = adverserialLoss(discOutputForRealBW, torch.ones_like(discOutputForRealBW))
+
+    adverserialLossForGeneratedColor = adverserialLoss(discOutputForGeneratedColor, torch.zeros_like(discOutputForGeneratedColor))
+    adverserialLossForRealColor = adverserialLoss(discOutputForRealColor, torch.ones_like(discOutputForRealColor))
+
+    discriminatorLossBW = adverserialLossForRealBW + adverserialLossForGeneratedBW
+    discriminatorLossColor = adverserialLossForRealColor + adverserialLossForGeneratedColor
+
+    discriminatorLoss = (discriminatorLossBW + discriminatorLossColor) / 2
+    discriminatorLoss.backward()
+    optimizer.step()
+
+    return discriminatorLossBW.item(), discriminatorLossColor.item()
+
+def generator_step(bw: torch.Tensor, color: torch.Tensor, generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn.Module, discriminatorColor: nn.Module, vgg16: nn.Module, optimizer: torch.optim.Optimizer) -> tuple[float, float]:
+    # we will only train the generator
+
+    for p in discriminatorBW.parameters():
+        p.requires_grad = False
+    
+    for p in discriminatorColor.parameters():
+        p.requires_grad = False
+
+    for p in generatorBW.parameters():
+        p.requires_grad = True
+    
+    for p in generatorColor.parameters():
+        p.requires_grad = True
+
+    generatorBW.zero_grad()
+    generatorColor.zero_grad()
+
+    bw = bw.to(settings.DEVICE)
+    color = color.to(settings.DEVICE)
+
+    generatedColor = generatorColor(bw)
+    generatedBW = generatorBW(color)
+
+    discOutputForGeneratedBW = discriminatorBW(generatedBW)
+    discOutputForGeneratedColor = discriminatorColor(generatedColor)
+
+    percepOutputForGeneratedBW = vgg16(generatedBW)
+    percepOutputForGeneratedColor = vgg16(generatedColor)
+
+    with torch.no_grad():
+        percepOutputForRealBW = vgg16(bw)
+        percepOutputForRealColor = vgg16(color)
+    
+    l1Loss = nn.L1Loss()
+    mseLoss = nn.MSELoss()
+    adverserialLoss = nn.BCEWithLogitsLoss()
+
+    l1LossBetweenGeneratedBWAndRealBW = l1Loss(generatedBW, bw)
+    l1LossBetweenGeneratedColorAndRealColor = l1Loss(generatedColor, color)
+
+    percepLossBetweenGeneratedBWAndRealBW = mseLoss(percepOutputForGeneratedBW, percepOutputForRealBW)
+    percepLossBetweenGeneratedColorAndRealColor = mseLoss(percepOutputForGeneratedColor, percepOutputForRealColor)
+
+    adverserialLossForGeneratedBW = adverserialLoss(discOutputForGeneratedBW, torch.ones_like(discOutputForGeneratedBW))
+    adverserialLossForGeneratedColor = adverserialLoss(discOutputForGeneratedColor, torch.ones_like(discOutputForGeneratedColor))
+
+    cycleBW = generatorBW(generatedColor)
+    cycleColor = generatorColor(generatedBW)
+    cycleLossBW = l1Loss(cycleBW, bw)
+    cycleLossColor = l1Loss(cycleColor, color)
+
+    whiteColorPenalty = white_color_penalty(color, generatedColor) if settings.USE_WHITE_COLOR_LOSS else 0
+
+    generatorLossBW = adverserialLossForGeneratedBW + l1LossBetweenGeneratedBWAndRealBW + percepLossBetweenGeneratedBWAndRealBW + cycleLossBW * settings.LAMBDA_CYCLE
+
+    generatorLossColor = adverserialLossForGeneratedColor + l1LossBetweenGeneratedColorAndRealColor + whiteColorPenalty + percepLossBetweenGeneratedColorAndRealColor + cycleLossColor * settings.LAMBDA_CYCLE
+
+    generatorLoss = (generatorLossBW + generatorLossColor) / 2
+    generatorLoss.backward()
+    optimizer.step()
+
+    return generatorLossBW.item(), generatorLossColor.item()
+
+def train(generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn.Module, discriminatorColor: nn.Module, vgg16: nn.Module, optimizerGen: torch.optim.Optimizer, optimizerDisc: torch.optim.Optimizer, loader: DataLoader) -> tuple[list[float], list[float], list[float], list[float], list[float]]:
+
+    #set training mode for models
+    generatorBW.train()
+    generatorColor.train()
+
+    discriminatorBW.train()
+    discriminatorColor.train()
+
+    #Initially train the discriminator
+    isDiscTurn = True
+
+    generatorBWLoss = []
+    generatorColorLoss = []
+
+    discriminatorBWLoss = []
+    discriminatorColorLoss = []
+
+    cycleLossList = []
+
+    for epoch in range(settings.NUM_EPOCHS):
+
+        if(epoch == settings.DECAY_EPOCH):
+            decrease_lr(optimizerGen)
+            decrease_lr(optimizerDisc)
+
+        totalDiscBWLoss = 0.0
+        totalDiscColorLoss = 0.0
+        totalGenBWLoss = 0.0
+        totalGenColorLoss = 0.0
+
+        n = 0
+
+        for i, (bw, color) in enumerate(tqdm(loader, leave=True, desc=f"Epoch: {epoch}")):
+            n = i
+
+            if isDiscTurn:
+                stepLossBW, stepLossColor = discriminator_step(bw=bw, color=color, generatorBW=generatorBW, generatorColor=generatorColor, discriminatorBW=discriminatorBW, discriminatorColor=discriminatorColor, optimizer=optimizerDisc)
+                totalDiscBWLoss += stepLossBW
+                totalDiscColorLoss += stepLossColor
+            else:
+                stepLossBW, stepLossColor = generator_step(bw=bw, color=color, generatorBW=generatorBW, generatorColor=generatorColor, discriminatorBW=discriminatorBW, discriminatorColor=discriminatorColor, vgg16=vgg16, optimizer=optimizerGen)
+                totalGenBWLoss += stepLossBW
+                totalGenColorLoss += stepLossColor
 
 
-    #     #perceptual loss
-    #     # per_bw_out = bw_gen(color)
-    #     # per_color_out = co_gen(bw)
-    #     # perceptual_loss_for_bw = perceptual_loss(generated_bw_g, bw)
-    #     # perceptual_loss_for_color = perceptual_loss(generated_color_g, color)
+            isDiscTurn = not isDiscTurn
 
-    #     # plot_per_bw_gen.append(perceptual_loss_for_bw.item())
-    #     # plot_per_co_gen.append(perceptual_loss_for_color.item())
+            epochGenBWLoss = totalGenBWLoss / ( n // 2 + 1)
+            epochGenColorLoss = totalGenColorLoss / ( n // 2 + 1)
+            epochDiscBWLoss = totalDiscBWLoss / ( n // 2 + 1)
+            epochDiscColorLoss = totalDiscColorLoss / ( n // 2 + 1)
 
-    #     #white color penalty loss
-    #     # white_color_out = co_gen(bw)
-    #     # white_penalty_loss_for_color = white_color_penalty_loss(color, generated_color_g)
-    #     # avg_loss_wh_pen_co_gen.append(white_penalty_loss_for_color.item())
+            generatorBWLoss.append(epochGenBWLoss)
+            generatorColorLoss.append(epochGenColorLoss)
+            discriminatorBWLoss.append(epochDiscBWLoss)
+            discriminatorColorLoss.append(epochDiscColorLoss)
 
-
-    #     #cycle consistency loss
-    #     cycle_bw = bw_gen(generated_color)
-    #     cycle_color = co_gen(generated_bw)
-    #     cycle_bw_loss = l1(bw, cycle_bw)
-    #     cycle_color_loss = l1(color, cycle_color)
-
-    #     avg_loss_cy_bw_gen.append(cycle_bw_loss.item())
-    #     avg_loss_cy_co_gen.append(cycle_color_loss.item())
-
-    #     generator_loss = (
-    #         bw_disc_loss_for_generated + color_disc_loss_for_generated
-    #         # + l1_loss_for_bw + l1_loss_for_color
-    #         # + perceptual_loss_for_bw + perceptual_loss_for_color
-    #         # + white_penalty_loss_for_color
-    #         + cycle_bw_loss * settings.LAMBDA_CYCLE + cycle_color_loss * settings.LAMBDA_CYCLE
-    #     )
-
-        
-    #     optimizer_gen.zero_grad()
-    #     generator_loss.backward()
-    #     optimizer_gen.step()
-
-    # manage the losses
-    # plot_ad_bw_disc.append(sum(avg_loss_ad_bw_disc) / len(avg_loss_ad_bw_disc))
-    # plot_ad_co_disc.append(sum(avg_loss_ad_co_disc) / len(avg_loss_ad_co_disc))
-    # plot_l1_bw_gen.append(sum(avg_loss_l1_bw_gen) / len(avg_loss_l1_bw_gen))
-    # plot_l1_co_gen.append(sum(avg_loss_l1_co_gen) / len(avg_loss_l1_co_gen))
-    # plot_wh_co_gen.append(sum(avg_loss_wh_pen_co_gen) / len(avg_loss_wh_pen_co_gen))
-    # plot_ad_co_gen.append(sum(avg_loss_ad_co_gen) / len(avg_loss_ad_co_gen))
-    # plot_ad_bw_gen.append(sum(avg_loss_ad_bw_gen) / len(avg_loss_ad_bw_gen))
-    # plot_cycle_bw_gen.append(sum(avg_loss_cy_bw_gen) / len(avg_loss_cy_co_gen))
-    # plot_cycle_co_gen.append(sum(avg_loss_cy_co_gen) / len(avg_loss_cy_co_gen))
-        
-    plot_loss_disc_fake.append(sum(avg_loss_disc_fake) / len(avg_loss_disc_fake))
-    plot_loss_disc_real.append(sum(avg_loss_disc_real) / len(avg_loss_disc_real))
-    plot_gen_adv_loss.append(sum(avg_gen_adv_loss) / len(avg_gen_adv_loss))
-    plot_gen_l1_loss.append(sum(avg_gen_l1_loss) / len(avg_gen_l1_loss))
-
-
-    if settings.SAVE_CHECKPOINTS:
-        save_model(model=bw_disc, optimizer=optimizer_disc, checkpoint_type=CheckpointTypes.BW_DISC)
-        save_model(model=co_disc, optimizer=optimizer_disc, checkpoint_type=CheckpointTypes.COLOR_DISC)
-        save_model(model=co_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.COLOR_GENERATOR)
-        save_model(model=bw_gen, optimizer=optimizer_gen, checkpoint_type=CheckpointTypes.BW_GENERATOR)
-            
+    return generatorBWLoss, generatorColorLoss, discriminatorBWLoss, discriminatorColorLoss, cycleLossList
 
 
 def main():
-    # make_deterministic()
-    all_exceptions = None
+    errors = None
+    generatorBW, generatorColor, discriminatorBW, discriminatorColor, vgg16 = get_models()
 
-    bw_disc = PatchGAN(in_channels=1).to(settings.DEVICE)
-    co_disc = PatchGAN(in_channels=3).to(settings.DEVICE)
+    #use initialized weights
+    if settings.USE_INITIALIZED_WEIGHTS:
+        kaiming_initialization(generatorBW)
+        kaiming_initialization(generatorColor)
+        xaivier_initialization(discriminatorBW)
+        xaivier_initialization(discriminatorColor)
 
-    bw_gen = UNet(in_channels=3, out_channels=1).to(settings.DEVICE)
-    # co_gen = UNet(in_channels=1, out_channels=3).to(settings.DEVICE)
-    # bw_gen = Generator(in_channels=3, out_channels=1).to(settings.DEVICE)
-    co_gen = Generator(in_channels=1, out_channels=3).to(settings.DEVICE)
+    #dataset preparation
+    dataset = BWColorMangaDataset(bw_manga_path=settings.TRAIN_BW_MANGA_PATH, color_manga_path=settings.TRAIN_COLOR_MANGA_PATH)
+    loader = DataLoader(dataset=dataset, batch_size=settings.BATCH_SIZE, shuffle=True, num_workers=2)
 
+    #Optimizers
+    optimizerGen, optimizerDisc = get_optimizers(generatorBW, generatorColor, discriminatorBW, discriminatorColor)
 
-    optimizer_disc = optimizer.Adam(
-        params=list(bw_disc.parameters()) + list(co_disc.parameters()),
-        lr=settings.LEARNING_RATE,
-        betas=(0.5, 0.999),
-    )
-
-    optimizer_gen = optimizer.Adam(
-        params=list(bw_gen.parameters()) + list(co_gen.parameters()),
-        lr=settings.LEARNING_RATE,
-        betas=(0.5, 0.999),
-    )
-
-    
-    l1 = nn.L1Loss()
-    # perceptual_loss = VGGPerceptualLoss().to(settings.DEVICE)
-    adverserial_loss = nn.BCEWithLogitsLoss()
-    # white_color_penalty_loss = white_color_penalty
-
-    if settings.LOAD_CHECKPOINTS:
-        load_model(
-            checkpoint_type=CheckpointTypes.COLOR_GENERATOR,
-            model=co_gen,
-            optimizer=optimizer_gen,
-            lr=settings.LEARNING_RATE,
-        )
-
-        load_model(
-            checkpoint_type=CheckpointTypes.BW_GENERATOR,
-            model=bw_gen,
-            optimizer=optimizer_gen,
-            lr=settings.LEARNING_RATE,
-        )
-
-        load_model(
-            checkpoint_type=CheckpointTypes.COLOR_DISC,
-            model=co_disc,
-            optimizer=optimizer_disc,
-            lr=settings.LEARNING_RATE,
-        )
-
-        load_model(
-            checkpoint_type=CheckpointTypes.BW_DISC,
-            model=bw_disc,
-            optimizer=optimizer_disc,
-            lr=settings.LEARNING_RATE,
-        )
-
-    train_dataset = BWColorMangaDataset(
-        bw_manga_path=settings.TRAIN_BW_MANGA_PATH,
-        color_manga_path=settings.TRAIN_COLOR_MANGA_PATH,
-    )
-
-    train_loader = DataLoader(
-        dataset=train_dataset,
-        batch_size=settings.BATCH_SIZE,
-        shuffle=True,
-        num_workers=settings.NUM_WORKERS,
-        pin_memory=True,
-    )
-
+    #Train
     try:
-        # fmt: off
-        for epoch in range(settings.NUM_EPOCHS):
-            train_model(
-                bw_disc, co_disc, bw_gen, co_gen,
-                optimizer_disc, optimizer_gen,
-                l1, adverserial_loss, #white_color_penalty_loss,
-                train_loader,
-                epoch
-            )
+        train(generatorBW, generatorColor, discriminatorBW, discriminatorColor, vgg16, optimizerGen, optimizerDisc, loader)
+
     except Exception as e:
-        all_exceptions = e
-    
-    # fmt:on
+        errors = e
+
+    if settings.SAVE_CHECKPOINTS:
+        save_model(generatorColor, optimizerGen, CheckpointTypes.COLOR_GENERATOR)
         
-    save_model(co_gen, optimizer_gen, CheckpointTypes.COLOR_GENERATOR)
-
-    # save_plots(plot_ad_bw_disc, 'BW Discriminator', plot_ad_co_disc, 'Color Discriminator', 'Adverserial Loss Generator')
-    # save_plots(plot_l1_bw_gen, 'BW Generator', plot_l1_co_gen, 'Color Generator', 'L1 Loss')
-    # save_plots(plot_per_bw_gen, 'BW Generator', plot_per_co_gen, 'Color Generator', 'Perceptual Loss')
-    # save_plots(plot_wh_co_gen, 'Color Generator', None, None, 'White Color Penalty Loss')
-    # save_plots(plot_ad_bw_gen, 'BW Generator', plot_ad_co_gen, 'Color Generator', 'Adverserial Loss Generator Maximize')
-    # save_plots(plot_cycle_bw_gen, 'BW Generator', plot_cycle_co_gen, 'Color Generator', 'Cycle Consistency Loss')
-
-    save_plots(plot_loss_disc_fake, "Discriminator", None, None, 'Color Discriminator For Fake')
-    save_plots(plot_loss_disc_real, "Discriminator", None, None, "Real Color")
-    save_plots(plot_gen_adv_loss, "Generator", None, None, "Adverserial Loss")
-    save_plots(plot_gen_l1_loss, "Generator", None, None, "L1 Loss")
-
-    if all_exceptions is not None:
-        raise all_exceptions
-
-
+    if errors is not None:
+        raise errors
+    
 
 if __name__ == "__main__":
     main()
