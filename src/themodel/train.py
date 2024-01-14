@@ -115,7 +115,8 @@ def train_model(
         g_adv_loss = adverserial_loss(fake_output, torch.ones_like(fake_output))
         avg_gen_adv_loss.append(g_adv_loss.item())
 
-        g_l1_loss = l1(color, fake_output)
+        fake_out_gen = co_gen(bw)
+        g_l1_loss = l1(color, fake_out_gen)
         avg_gen_l1_loss.append(g_l1_loss.item())
 
         g_loss = g_adv_loss + g_l1_loss
