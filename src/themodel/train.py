@@ -101,7 +101,7 @@ def discriminator_step(bw: torch.Tensor, color: torch.Tensor, generatorBW: nn.Mo
     discriminatorLossBW = adverserialLossForRealBW + adverserialLossForGeneratedBW
     discriminatorLossColor = adverserialLossForRealColor + adverserialLossForGeneratedColor
 
-    discriminatorLoss = (discriminatorLossBW + discriminatorLossColor) / 2
+    discriminatorLoss = (discriminatorLossBW + discriminatorLossColor)
     discriminatorLoss.backward()
     optimizer.step()
 
@@ -165,7 +165,7 @@ def generator_step(bw: torch.Tensor, color: torch.Tensor, generatorBW: nn.Module
 
     generatorLossColor = adverserialLossForGeneratedColor + l1LossBetweenGeneratedColorAndRealColor + whiteColorPenalty + percepLossBetweenGeneratedColorAndRealColor + cycleLossColor * settings.LAMBDA_CYCLE
 
-    generatorLoss = (generatorLossBW + generatorLossColor) / 2
+    generatorLoss = (generatorLossBW + generatorLossColor)
     generatorLoss.backward()
     optimizer.step()
 
