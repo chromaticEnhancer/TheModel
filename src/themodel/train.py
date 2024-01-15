@@ -191,9 +191,10 @@ def train(generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn
 
     for epoch in range(settings.NUM_EPOCHS):
 
-        if(epoch == settings.DECAY_EPOCH):
-            decrease_lr(optimizerGen)
-            decrease_lr(optimizerDisc)
+        if settings.CHANGE_LR:
+            if(epoch == settings.DECAY_EPOCH):
+                decrease_lr(optimizerGen)
+                decrease_lr(optimizerDisc)
 
         totalDiscBWLoss = 0.0
         totalDiscColorLoss = 0.0
