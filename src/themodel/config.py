@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     USE_WHITE_COLOR_LOSS: bool = True
     USE_INITIALIZED_WEIGHTS: bool = False
 
-    GENERATOR_LR: float = 2e-4
-    DISCRIMINATOR_LR: float = 2e-4
+    GENERATOR_LR: float = 1e-4
+    DISCRIMINATOR_LR: float = 4e-4
     CHANGE_LR: bool = False
 
     NORMALIZE_DATASET: bool = True
