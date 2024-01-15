@@ -5,7 +5,7 @@ import torchvision
 from torch.utils.data import Dataset
 
 from themodel import settings
-from themodel.utils import normalize_image, denormalize_image
+from themodel.normalizer import get_mean_std
 
 class BWColorMangaDataset(Dataset):
     def __init__(self, bw_manga_path: str, color_manga_path: str) -> None:
@@ -32,15 +32,36 @@ class BWColorMangaDataset(Dataset):
             mode=torchvision.io.ImageReadMode.RGB,
         )
 
-        normalise_color = normalize_image(is_color=True)
-        normalise_bw = normalize_image(is_color=False)
+        resize =  torchvision.transforms.Resize(size=(settings.IMAGE_HEIGHT, settings.IMAGE_WIDTH), antialias=True) #type:ignore
+        bw_image = resize(bw_image) / settings.DIVIDE_VALUE
+        color_image = resize(color_image) / settings.DIVIDE_VALUE
+    
+        if settings.NORMALIZE_DATASET:
+            mean_bw, std_bw = get_mean_std(bw_image)
+            mean_color, std_color = get_mean_std(color_image)
 
-    
-        return normalise_bw(bw_image.repeat(3, 1, 1) / 255.0), normalise_color(color_image / 255.0)
-    
+            normalize_bw = torchvision.transforms.Normalize(
+                mean=mean_bw,
+                std=std_bw,
+            )
+
+            normalize_color = torchvision.transforms.Normalize(
+                mean=mean_color,
+                std=std_color,
+            )
+
+            bw_image = normalize_bw(bw_image)
+            color_image = normalize_color(color_image)
+
+        bw_image = bw_image.repeat(3, 1, 1)
+        
+        return bw_image, color_image
 
 
 if __name__ == "__main__":
+    settings.NORMALIZE_DATASET = True
+
     dataset = BWColorMangaDataset(bw_manga_path=settings.TRAIN_BW_MANGA_PATH, color_manga_path=settings.TRAIN_COLOR_MANGA_PATH)
     bw, color = dataset[0]
+    print(bw, color)
     print(bw.shape, color.shape)

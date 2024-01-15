@@ -6,18 +6,6 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     BATCH_SIZE: int = 1
 
-    DATASET_MEAN_R_CO: float = 0.1307
-    DATASET_MEAN_G_CO: float = 0.1307
-    DATASET_MEAN_B_CO: float = 0.1307
-
-    DATASET_MEAN_R_BW: float = 0.1307
-
-    DATASET_STD_R_CO: float = 0.3081
-    DATASET_STD_G_CO: float = 0.3081
-    DATASET_STD_B_CO: float = 0.3081
-
-    DATASET_STD_R_BW: float = 0.3081
-
     IMAGE_WIDTH: int = 64
     IMAGE_HEIGHT: int = 64
 
@@ -29,9 +17,12 @@ class Settings(BaseSettings):
     USE_WHITE_COLOR_LOSS: bool = True
     USE_INITIALIZED_WEIGHTS: bool = False
 
-    GENERATOR_LR: float = 1e-4
-    DISCRIMINATOR_LR: float = 4e-4
+    GENERATOR_LR: float = 2e-4
+    DISCRIMINATOR_LR: float = 2e-4
     CHANGE_LR: bool = False
+
+    NORMALIZE_DATASET: bool = True
+    DIVIDE_VALUE: float = 1.0
 
     TRAIN_BW_MANGA_PATH: str = "./data/train/bw"
     TRAIN_COLOR_MANGA_PATH: str = "./data/train/color"

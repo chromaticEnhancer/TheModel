@@ -73,47 +73,6 @@ def make_deterministic():
     torch.cuda.manual_seed_all(seed)
 
 
-def normalize_image(is_color: bool = True):
-
-    #TODO: get single image mean from ../test/normalizer2.py. confirm if the following can be removed
-
-    mean = (settings.DATASET_MEAN_R_CO, settings.DATASET_MEAN_G_CO, settings.DATASET_MEAN_B_CO)
-    std = (settings.DATASET_STD_R_CO, settings.DATASET_STD_G_CO, settings.DATASET_STD_B_CO)
-
-    if not is_color:
-        mean = (settings.DATASET_MEAN_R_BW)
-        std = (settings.DATASET_STD_R_BW)
-
-    transform = transforms.Compose(
-        [
-            transforms.Resize(size=(settings.IMAGE_HEIGHT, settings.IMAGE_WIDTH), antialias=True),#type:ignore
-            # transforms.Normalize(
-            #     mean=mean,
-            #     std=std
-            # ),
-        ]
-    )
-
-    return transform
-
-
-def denormalize_image(image: torch.Tensor, is_color: bool = True):
-    mean = (settings.DATASET_MEAN_R_CO, settings.DATASET_MEAN_G_CO, settings.DATASET_MEAN_B_CO)
-    std = (settings.DATASET_STD_R_CO, settings.DATASET_STD_G_CO, settings.DATASET_STD_B_CO)
-
-    if not is_color:
-        mean = (settings.DATASET_MEAN_R_BW, settings.DATASET_MEAN_G_BW, settings.DATASET_MEAN_B_BW)
-        std = (settings.DATASET_STD_R_BW, settings.DATASET_STD_G_BW, settings.DATASET_STD_B_BW)
-
-    for t, m, s in zip(image, mean, std):
-        t.mul_(s).add_(m)
-
-    #rescale the image
-    image = image.clamp(0, 1)
-
-    return image
-
-
 def save_plots(loss1: list, l1_label: str, loss2: Optional[list], l2_label: Optional[str], title: str):
     plt.figure()
     plt.plot(loss1, label=l1_label)

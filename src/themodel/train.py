@@ -252,8 +252,8 @@ def main() -> None:
     try:
         generatorBWLoss, generatorColorLoss, discriminatorBWLoss, discriminatorColorLoss = train(generatorBW, generatorColor, discriminatorBW, discriminatorColor, vgg16, optimizerGen, optimizerDisc, loader)
 
-        save_plots(generatorBWLoss, "GeneratorBW", generatorColorLoss, "GeneratorColor", "Generator Loss")
-        save_plots(discriminatorBWLoss, "DiscriminatorBW", discriminatorColorLoss, "DiscriminatorColor", "Discriminator Loss")
+        save_plots(generatorBWLoss, "GeneratorBW", generatorColorLoss, "GeneratorColor", "Total Generator Loss")
+        save_plots(discriminatorBWLoss, "DiscriminatorBW", discriminatorColorLoss, "DiscriminatorColor", "Total Discriminator Loss")
 
     except Exception as e:
         errors = e
