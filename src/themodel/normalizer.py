@@ -1,4 +1,5 @@
 import torch
+import torchvision
 
 def get_mean_std(image: torch.Tensor):
     """
@@ -19,3 +20,15 @@ def get_mean_std(image: torch.Tensor):
         stds.append(image[i, :, :].float().std().item())
 
     return means, stds
+
+def denormalize(tensor: torch.Tensor) -> torch.Tensor:
+    mean, std = get_mean_std(tensor)
+    
+    denorm = torchvision.transforms.Normalize(
+        mean=[-m / s for m, s in zip(mean, std)],
+        std=[1.0 / s for s in std]
+    )
+    out = denorm(tensor)
+    out = (out - out.min()) / (out.max() - out.min()) * 255
+
+    return out
