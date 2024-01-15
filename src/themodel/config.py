@@ -29,10 +29,10 @@ class Settings(BaseSettings):
     LAMBDA_CYCLE: int = 10
     NUM_WORKERS: int = 2
 
-    NUM_EPOCHS: int = 3
+    NUM_EPOCHS: int = 5
     DECAY_EPOCH: int = 10
 
-    USE_WHITE_COLOR_LOSS: bool = False
+    USE_WHITE_COLOR_LOSS: bool = True
     USE_INITIALIZED_WEIGHTS: bool = False
 
     GENERATOR_LR: float = 1e-4

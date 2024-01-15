@@ -33,10 +33,10 @@ def xaivier_initialization(discriminator: nn.Module) -> None:
 
 def get_models() -> tuple[nn.Module, nn.Module, nn.Module, nn.Module, nn.Module]:
 
-    generatorBW = UNet(in_channels=3, out_channels=1).to(settings.DEVICE)
-    generatorColor = UNet(in_channels=1, out_channels=3).to(settings.DEVICE)
+    generatorBW = UNet(in_channels=3, out_channels=3).to(settings.DEVICE)
+    generatorColor = UNet(in_channels=3, out_channels=3).to(settings.DEVICE)
 
-    discriminatorBW = PatchGAN(in_channels=1).to(settings.DEVICE)
+    discriminatorBW = PatchGAN(in_channels=3).to(settings.DEVICE)
     discriminatorColor = PatchGAN(in_channels=3).to(settings.DEVICE)
 
     vgg16 = torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT).eval().to(settings.DEVICE)
@@ -45,9 +45,9 @@ def get_models() -> tuple[nn.Module, nn.Module, nn.Module, nn.Module, nn.Module]
 
     return generatorBW, generatorColor, discriminatorBW, discriminatorColor, vgg16
 
-def get_optimizers(generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn.Module, discriminator: nn.Module) -> tuple[torch.optim.Optimizer, torch.optim.Optimizer]:
+def get_optimizers(generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn.Module, discriminatorColor: nn.Module) -> tuple[torch.optim.Optimizer, torch.optim.Optimizer]:
     optimizerGen = torch.optim.Adam(params=list(generatorBW.parameters()) + list(generatorColor.parameters()), lr=settings.GENERATOR_LR, betas=(0.5, 0.999))
-    optimizerDisc = torch.optim.Adam(params=list(discriminatorBW.parameters()) + list(discriminatorBW.parameters()), lr=settings.DISCRIMINATOR_LR, betas=(0.5, 0.999))
+    optimizerDisc = torch.optim.Adam(params=list(discriminatorBW.parameters()) + list(discriminatorColor.parameters()), lr=settings.DISCRIMINATOR_LR, betas=(0.5, 0.999))
 
     return optimizerGen, optimizerDisc
 
@@ -171,7 +171,7 @@ def generator_step(bw: torch.Tensor, color: torch.Tensor, generatorBW: nn.Module
 
     return generatorLossBW.item(), generatorLossColor.item()
 
-def train(generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn.Module, discriminatorColor: nn.Module, vgg16: nn.Module, optimizerGen: torch.optim.Optimizer, optimizerDisc: torch.optim.Optimizer, loader: DataLoader) -> tuple[list[float], list[float], list[float], list[float], list[float]]:
+def train(generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn.Module, discriminatorColor: nn.Module, vgg16: nn.Module, optimizerGen: torch.optim.Optimizer, optimizerDisc: torch.optim.Optimizer, loader: DataLoader) -> tuple[list[float], list[float], list[float], list[float]]:
 
     #set training mode for models
     generatorBW.train()
@@ -188,8 +188,6 @@ def train(generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn
 
     discriminatorBWLoss = []
     discriminatorColorLoss = []
-
-    cycleLossList = []
 
     for epoch in range(settings.NUM_EPOCHS):
 
@@ -229,10 +227,9 @@ def train(generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn
             discriminatorBWLoss.append(epochDiscBWLoss)
             discriminatorColorLoss.append(epochDiscColorLoss)
 
-    return generatorBWLoss, generatorColorLoss, discriminatorBWLoss, discriminatorColorLoss, cycleLossList
+    return generatorBWLoss, generatorColorLoss, discriminatorBWLoss, discriminatorColorLoss
 
-
-def main():
+def main() -> None:
     errors = None
     generatorBW, generatorColor, discriminatorBW, discriminatorColor, vgg16 = get_models()
 
@@ -252,7 +249,10 @@ def main():
 
     #Train
     try:
-        train(generatorBW, generatorColor, discriminatorBW, discriminatorColor, vgg16, optimizerGen, optimizerDisc, loader)
+        generatorBWLoss, generatorColorLoss, discriminatorBWLoss, discriminatorColorLoss = train(generatorBW, generatorColor, discriminatorBW, discriminatorColor, vgg16, optimizerGen, optimizerDisc, loader)
+
+        save_plots(generatorBWLoss, "GeneratorBW", generatorColorLoss, "GeneratorColor", "Generator Loss")
+        save_plots(discriminatorBWLoss, "DiscriminatorBW", discriminatorColorLoss, "DiscriminatorColor", "Discriminator Loss")
 
     except Exception as e:
         errors = e
