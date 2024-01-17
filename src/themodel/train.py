@@ -253,6 +253,9 @@ def main() -> None:
 
     if settings.SAVE_CHECKPOINTS:
         save_model(generatorColor, optimizerGen, CheckpointTypes.COLOR_GENERATOR)
+        save_model(generatorBW, optimizerGen, CheckpointTypes.BW_GENERATOR)
+        save_model(discriminatorColor, optimizerDisc, CheckpointTypes.COLOR_DISC)
+        save_model(discriminatorBW, optimizerDisc, CheckpointTypes.BW_DISC)
         
     if errors is not None:
         raise errors

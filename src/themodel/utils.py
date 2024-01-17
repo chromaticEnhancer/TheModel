@@ -57,7 +57,7 @@ def load_model(
         for param_group in optimizer.param_groups:
             param_group["lr"] = lr
 
-def load_generator(model, checkpoint_type: Literal[CheckpointTypes.COLOR_GENERATOR]):
+def load_generator(model, checkpoint_type: Literal[CheckpointTypes.COLOR_GENERATOR] | Literal[CheckpointTypes.BW_GENERATOR]):
     checkpoint = torch.load(
         f=os.path.join(settings.CHECKPOINTS_FOLDER, checkpoint_type.value),
         map_location=settings.DEVICE,
@@ -84,9 +84,4 @@ def save_plots(loss1: list, l1_label: str, loss2: Optional[list], l2_label: Opti
     plt.legend()
     plt.savefig(settings.OUTPUT_FOLDER + f'/{title}.jpg')
     plt.close()
-
-
-# TODO: 6 FUNCTIONS :
-# TO CALCULATE MEAN, SD ( OF EACH CHANNEL AND OF 2 DATASET (B&W / COLOURED))
-# GENERATING TOTAL OF 6 VALUES
 
