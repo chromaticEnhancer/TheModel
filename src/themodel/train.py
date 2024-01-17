@@ -4,6 +4,7 @@ from themodel.generator import UNet
 from themodel.discriminator import PatchGAN
 
 from themodel.config import settings
+from themodel.ogenerator import Generator
 from themodel.dataset import BWColorMangaDataset
 from themodel.losses import white_color_penalty
 from themodel.utils import (
@@ -33,9 +34,11 @@ def xaivier_initialization(discriminator: nn.Module) -> None:
 
 def get_models() -> tuple[nn.Module, nn.Module, nn.Module, nn.Module, nn.Module]:
 
-    generatorBW = UNet(in_channels=3, out_channels=3).to(settings.DEVICE)
-    generatorColor = UNet(in_channels=3, out_channels=3).to(settings.DEVICE)
-
+    # generatorBW = UNet(in_channels=3, out_channels=3).to(settings.DEVICE)
+    # generatorColor = UNet(in_channels=3, out_channels=3).to(settings.DEVICE)
+    generatorBW = Generator(img_channels=3).to(settings.DEVICE)
+    generatorColor = Generator(img_channels=3).to(settings.DEVICE)
+    
     discriminatorBW = PatchGAN(in_channels=3).to(settings.DEVICE)
     discriminatorColor = PatchGAN(in_channels=3).to(settings.DEVICE)
 
