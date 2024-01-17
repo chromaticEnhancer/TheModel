@@ -205,18 +205,16 @@ def train(generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn
 
         for i, (bw, color) in enumerate(tqdm(loader, leave=True, desc=f"Epoch: {epoch}")):
             n = i
+        
+            stepLossBW, stepLossColor = discriminator_step(bw=bw, color=color, generatorBW=generatorBW, generatorColor=generatorColor, discriminatorBW=discriminatorBW, discriminatorColor=discriminatorColor, optimizer=optimizerDisc)
+            totalDiscBWLoss += stepLossBW
+            totalDiscColorLoss += stepLossColor
 
-            if isDiscTurn:
-                stepLossBW, stepLossColor = discriminator_step(bw=bw, color=color, generatorBW=generatorBW, generatorColor=generatorColor, discriminatorBW=discriminatorBW, discriminatorColor=discriminatorColor, optimizer=optimizerDisc)
-                totalDiscBWLoss += stepLossBW
-                totalDiscColorLoss += stepLossColor
-            else:
-                stepLossBW, stepLossColor = generator_step(bw=bw, color=color, generatorBW=generatorBW, generatorColor=generatorColor, discriminatorBW=discriminatorBW, discriminatorColor=discriminatorColor, vgg16=vgg16, optimizer=optimizerGen)
-                totalGenBWLoss += stepLossBW
-                totalGenColorLoss += stepLossColor
+            stepLossBW, stepLossColor = generator_step(bw=bw, color=color, generatorBW=generatorBW, generatorColor=generatorColor, discriminatorBW=discriminatorBW, discriminatorColor=discriminatorColor, vgg16=vgg16, optimizer=optimizerGen)
+            totalGenBWLoss += stepLossBW
+            totalGenColorLoss += stepLossColor
 
 
-            isDiscTurn = not isDiscTurn
 
         generatorBWLoss.append(totalGenBWLoss / ( n // 2 + 1))
         generatorColorLoss.append(totalGenColorLoss / ( n // 2 + 1))
