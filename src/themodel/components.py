@@ -309,7 +309,7 @@ class UNetDecoder(nn.Module):
             nn.Conv2d(
                 in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1
             ),
-            nn.ConvTranspose2d(in_channels=1024, out_channels=1024, kernel_size=2, stride=2),
+            nn.ConvTranspose2d(in_channels=256, out_channels=256, kernel_size=2, stride=2),
             nn.LeakyReLU(0.2, inplace=True)
         )
 
