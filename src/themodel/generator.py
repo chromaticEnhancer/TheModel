@@ -1,45 +1,73 @@
-import torch
 import torch.nn as nn
 
-from themodel.components import UNetEncoder
-from themodel.components import UNetDecoder
-from themodel.components import LocalFeatureExtractor
-
-
-class UNet(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int) -> None:
+class ResNetBlock(nn.Module):
+    def __init__(self, input_channel: int):
         super().__init__()
 
-        self.encoder = UNetEncoder(in_channels=in_channels)
-        self.decoder = UNetDecoder()
-        self.feature = LocalFeatureExtractor(in_channels=in_channels)
+        self.layers = nn.Sequential(
+                        nn.ReflectionPad2d(1),
+                        nn.Conv2d(in_channels=input_channel, out_channels=input_channel, kernel_size=3, padding=0, bias=True),
+                        nn.InstanceNorm2d(input_channel),
+                        nn.ReLU(True),
+                        nn.ReflectionPad2d(1),
+                        nn.Conv2d(in_channels=input_channel,out_channels=input_channel,kernel_size=3, padding=0, bias=True),
+                        nn.InstanceNorm2d(input_channel)
+                    )
 
-        self.exit = nn.Sequential(
-            nn.Conv2d(64 + 32, 32, kernel_size=3, stride=1, padding=1),
-            nn.LeakyReLU(0.2, True),
-            nn.Conv2d(32, out_channels, kernel_size=1, stride=1, padding=0),
-        )
+    def forward(self, x):
+        return x + self.layers(x)
+    
+class ResNet9Generator(nn.Module):
+    def __init__(self, input_channels: int, output_channels: int):
+        super().__init__()
 
-    def forward(self, image):
-        aux_out, x0 = self.feature(image)
-        x1, x2, x3, x4 = self.encoder(image)
+        self.blocks = 9
+        self.features = 64
+        self.layers = [
+            nn.Conv2d(in_channels=input_channels, out_channels=self.features, kernel_size=7, padding=0, bias=True),
+            nn.InstanceNorm2d(self.features),
+            nn.ReLU(True)
+        ]
 
-        out = self.decoder.layer4(torch.cat([x4, aux_out], 1))
+        nDownSampling = 2
+        for i in range(nDownSampling):
+            mult = 2 ** i
+            self.layers += [
+                nn.Conv2d(self.features * mult, self.features * mult * 2, kernel_size=3, stride=2, padding=1, bias=True),
+                nn.InstanceNorm2d(self.features * mult * 2),
+                nn.ReLU(True)
+            ]
 
-        x = self.decoder.layer3(torch.cat([out, x3], 1))
 
-        x = self.decoder.layer2(torch.cat([x, x2, x1], 1))
+        mult = 2 ** nDownSampling
+        for i in range(self.blocks):
+            self.layers += [
+                ResNetBlock(self.features * mult)
+            ]
+        
+        for i in range(nDownSampling):
+            mult = 2 ** (nDownSampling - i)
+            self.layers += [
+                nn.ConvTranspose2d(in_channels=self.features * mult, out_channels=int(self.features * mult / 2), kernel_size=3, stride=2, padding=1, output_padding=1, bias=True),
+                nn.InstanceNorm2d(int(self.features * mult / 2)),
+                nn.ReLU(True)
+            ]
 
-        x = torch.tanh(self.exit(torch.cat([x, x0], 1)))
+        self.layers += [
+            nn.ReflectionPad2d(3),
+            nn.Conv2d(self.features, output_channels, kernel_size=7, padding=0),
+            nn.Tanh()
+        ]
 
-        return x
+        self.model = nn.Sequential(*self.layers)
 
+    def forward(self, x):
+        return self.model(x)
 
-# 512 512
-# 112 112
 
 if __name__ == "__main__":
-    image = torch.randn(1, 3, 64, 64)
-    model = UNet(3,1)
-    out = model(image)
+    import torch
+    model = ResNet9Generator(input_channels=3, output_channels=3)
+    input = torch.randn(1, 3, 280, 280)
+    out = model(input)
     print(out.shape)

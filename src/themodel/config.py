@@ -11,8 +11,9 @@ class Settings(BaseSettings):
 
     LAMBDA_CYCLE: int = 10
 
-    NUM_EPOCHS: int = 5
-    DECAY_EPOCH: int = 10
+    NUM_EPOCHS: int = 100
+    DECAY_EPOCH: int = 100
+
 
     USE_WHITE_COLOR_LOSS: bool = True
     USE_INITIALIZED_WEIGHTS: bool = False

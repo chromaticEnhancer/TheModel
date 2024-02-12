@@ -1,8 +1,8 @@
 import torchvision
+from torch.optim import lr_scheduler
 
-from themodel.generator import UNet
-from themodel.ogenerator import Generator
-from themodel.discriminator import PatchGAN
+from themodel.generator import ResNet9Generator
+from themodel.discriminator import PatchGan
 
 from themodel.config import settings
 from themodel.dataset import BWColorMangaDataset
@@ -19,40 +19,30 @@ import torch.nn as nn
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 
-def kaiming_initialization(generator: nn.Module) -> None:
-    for m in generator.modules():
-        if isinstance(m, nn.Conv2d):
-            nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu')
+def normal_initialization(model: nn.Module) -> None:
+    for m in model.modules():
+        if isinstance(m, nn.Conv2d or nn.Linear):
+            nn.init.normal_(m.weight, mean=0, std=0.2)
+            if(hasattr(m, 'bias') and m.bias is not None):
+                nn.init.constant_(m.bias.data, 0.0)
 
-            if m.bias is not None:
-                nn.init.constant_(m.bias, 0)
+def get_models() -> tuple[nn.Module, nn.Module, nn.Module, nn.Module]:
 
-def xaivier_initialization(discriminator: nn.Module) -> None:
-    for m in discriminator.modules():
-        if isinstance(m, nn.Conv2d):
-            nn.init.xavier_uniform_(m.weight)
-
-def get_models() -> tuple[nn.Module, nn.Module, nn.Module, nn.Module, nn.Module]:
-
-    # generatorBW = UNet(in_channels=3, out_channels=3).to(settings.DEVICE)
-    # generatorColor = UNet(in_channels=3, out_channels=3).to(settings.DEVICE)
-    generatorBW = Generator(img_channels=3).to(settings.DEVICE)
-    generatorColor = Generator(img_channels=3).to(settings.DEVICE)
+    generatorBW = ResNet9Generator(input_channels=3, output_channels=3).to(settings.DEVICE)
+    generatorColor = ResNet9Generator(input_channels=3, output_channels=3).to(settings.DEVICE)
     
+    discriminatorBW = PatchGan(input_channels=3).to(settings.DEVICE)
+    discriminatorColor = PatchGan(input_channels=3).to(settings.DEVICE)
 
-    
-    discriminatorBW = PatchGAN(in_channels=3).to(settings.DEVICE)
-    discriminatorColor = PatchGAN(in_channels=3).to(settings.DEVICE)
+    return generatorBW, generatorColor, discriminatorBW, discriminatorColor
 
-    vgg16 = torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT).eval().to(settings.DEVICE)
-    for param in vgg16.parameters():
-        param.requires_grad = False
-
-    return generatorBW, generatorColor, discriminatorBW, discriminatorColor, vgg16
 
 def get_optimizers(generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn.Module, discriminatorColor: nn.Module) -> tuple[torch.optim.Optimizer, torch.optim.Optimizer]:
     optimizerGen = torch.optim.Adam(params=list(generatorBW.parameters()) + list(generatorColor.parameters()), lr=settings.GENERATOR_LR, betas=(0.5, 0.999))
     optimizerDisc = torch.optim.Adam(params=list(discriminatorBW.parameters()) + list(discriminatorColor.parameters()), lr=settings.DISCRIMINATOR_LR, betas=(0.5, 0.999))
+
+    lr_scheduler.LambdaLR(optimizerGen, lr_lambda=lambda epoch: (1.0 - max(0, epoch + 2 - 100) / float(settings.DECAY_EPOCH + 1)))
+    lr_scheduler.LambdaLR(optimizerDisc, lr_lambda=lambda epoch: (1.0 - max(0, epoch + 2 - 100) / float(settings.DECAY_EPOCH + 1)))
 
     return optimizerGen, optimizerDisc
 
@@ -176,7 +166,12 @@ def generator_step(bw: torch.Tensor, color: torch.Tensor, generatorBW: nn.Module
 
     return generatorLossBW.item(), generatorLossColor.item()
 
-def train(generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn.Module, discriminatorColor: nn.Module, vgg16: nn.Module, optimizerGen: torch.optim.Optimizer, optimizerDisc: torch.optim.Optimizer, loader: DataLoader) -> tuple[list[float], list[float], list[float], list[float]]:
+def shouldTrainModels(models: list[nn.Module], shouldTrain: bool) -> None:
+    for model in models:
+        for param in model.parameters():
+            param.requires_grad = shouldTrain
+
+def train(generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn.Module, discriminatorColor: nn.Module, optimizerGen: torch.optim.Optimizer, optimizerDisc: torch.optim.Optimizer, loader: DataLoader) -> tuple[list[float], list[float], list[float], list[float]]:
 
     #set training mode for models
     generatorBW.train()
@@ -185,59 +180,31 @@ def train(generatorBW: nn.Module, generatorColor: nn.Module, discriminatorBW: nn
     discriminatorBW.train()
     discriminatorColor.train()
 
-    #Initially train the discriminator
-    isDiscTurn = True
-
-    generatorBWLoss = []
-    generatorColorLoss = []
-
-    discriminatorBWLoss = []
-    discriminatorColorLoss = []
-
-    for epoch in range(settings.NUM_EPOCHS):
-
-        if settings.CHANGE_LR:
-            if(epoch == settings.DECAY_EPOCH):
-                decrease_lr(optimizerGen)
-                decrease_lr(optimizerDisc)
-
-        totalDiscBWLoss = 0.0
-        totalDiscColorLoss = 0.0
-        totalGenBWLoss = 0.0
-        totalGenColorLoss = 0.0
-
-        n = 0
-
+    for epoch in range(1, settings.NUM_EPOCHS):
+  
         for i, (bw, color) in enumerate(tqdm(loader, leave=True, desc=f"Epoch: {epoch}")):
-            n = i
-        
-            stepLossBW, stepLossColor = discriminator_step(bw=bw, color=color, generatorBW=generatorBW, generatorColor=generatorColor, discriminatorBW=discriminatorBW, discriminatorColor=discriminatorColor, optimizer=optimizerDisc)
-            totalDiscBWLoss += stepLossBW
-            totalDiscColorLoss += stepLossColor
+            fake_color = generatorColor(bw)
+            recre_bw = generatorBW(fake_color)
 
-            stepLossBW, stepLossColor = generator_step(bw=bw, color=color, generatorBW=generatorBW, generatorColor=generatorColor, discriminatorBW=discriminatorBW, discriminatorColor=discriminatorColor, vgg16=vgg16, optimizer=optimizerGen)
-            totalGenBWLoss += stepLossBW
-            totalGenColorLoss += stepLossColor
+            fake_bw = generatorBW(color)
+            recre_color = generatorColor(fake_bw)
 
+            # Train Generators
+            shouldTrainModels([discriminatorBW, discriminatorColor], False)
+            optimizerGen.zero_grad()
 
-
-        generatorBWLoss.append(totalGenBWLoss / ( n // 2 + 1))
-        generatorColorLoss.append(totalGenColorLoss / ( n // 2 + 1))
-        discriminatorBWLoss.append(totalDiscBWLoss / ( n // 2 + 1))
-        discriminatorColorLoss.append(totalDiscColorLoss / ( n // 2 + 1))
-
-    return generatorBWLoss, generatorColorLoss, discriminatorBWLoss, discriminatorColorLoss
+            ...
 
 def main() -> None:
     errors = None
-    generatorBW, generatorColor, discriminatorBW, discriminatorColor, vgg16 = get_models()
+    generatorBW, generatorColor, discriminatorBW, discriminatorColor = get_models()
 
     #use initialized weights
     if settings.USE_INITIALIZED_WEIGHTS:
-        kaiming_initialization(generatorBW)
-        kaiming_initialization(generatorColor)
-        xaivier_initialization(discriminatorBW)
-        xaivier_initialization(discriminatorColor)
+        normal_initialization(generatorBW)
+        normal_initialization(generatorColor)
+        normal_initialization(discriminatorBW)
+        normal_initialization(discriminatorColor)
 
     #dataset preparation
     dataset = BWColorMangaDataset(bw_manga_path=settings.TRAIN_BW_MANGA_PATH, color_manga_path=settings.TRAIN_COLOR_MANGA_PATH)
@@ -248,10 +215,8 @@ def main() -> None:
 
     #Train
     try:
-        generatorBWLoss, generatorColorLoss, discriminatorBWLoss, discriminatorColorLoss = train(generatorBW, generatorColor, discriminatorBW, discriminatorColor, vgg16, optimizerGen, optimizerDisc, loader)
-
-        save_plots(generatorBWLoss, "GeneratorBW", generatorColorLoss, "GeneratorColor", "Total Generator Loss")
-        save_plots(discriminatorBWLoss, "DiscriminatorBW", discriminatorColorLoss, "DiscriminatorColor", "Total Discriminator Loss")
+    
+        ...
 
     except Exception as e:
         errors = e
@@ -265,6 +230,3 @@ def main() -> None:
     if errors is not None:
         raise errors
     
-
-if __name__ == "__main__":
-    main()
