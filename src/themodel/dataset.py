@@ -12,8 +12,8 @@ class BWColorMangaDataset(Dataset):
         self.bw_root = bw_manga_path
         self.color_root = color_manga_path
 
-        self.bw_images = os.listdir(self.bw_root)
-        self.color_images = os.listdir(self.color_root)
+        self.bw_images = sorted(os.listdir(self.bw_root))
+        self.color_images = sorted(os.listdir(self.color_root))
 
         self.dataset_length = min(len(self.bw_images), len(self.color_images))
 
