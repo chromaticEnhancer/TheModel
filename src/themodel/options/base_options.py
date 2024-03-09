@@ -3,7 +3,7 @@ import os
 from themodel.util import util
 import torch
 import themodel.models as models
-import themodle.data as data
+import themodel.data as data
 
 class BaseOptions():
     def __init__(self):
