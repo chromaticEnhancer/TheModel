@@ -23,6 +23,7 @@ def colorize(imgPath):
     opt.resize_or_crop = 'scale_width'
     opt.loadSize = 512
     opt.fineSize = 512
+    opt.checkpoints_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),'checkpoints' )
     aspect_ratio = opt.aspect_ratio
     data_loader = CreateDataLoader(opt)
     dataset = data_loader.load_data()
