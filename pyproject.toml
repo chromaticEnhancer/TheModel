@@ -2,6 +2,9 @@
 requires = ["setuptools>=64.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+ include_package_data = true
+
 [project]
 name = "themodel"
 version = "3.0.1"
