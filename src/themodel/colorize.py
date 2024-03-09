@@ -1,8 +1,8 @@
 import os
-from options.test_options import TestOptions
-from data import CreateDataLoader
-from models import create_model
-from util.util import tensor2im, save_image
+from themodel.options.test_options import TestOptions
+from themodel.data import CreateDataLoader
+from themodel.models import create_model
+from themodel.util.util import tensor2im, save_image
 from skimage.transform import resize
 import ntpath
 
